@@ -30,45 +30,89 @@ find_top_n_levels <- function(df, group, n, metric) {
 }
 
 plot_game_comparison <- function(details, game_id, plot_type, feature, remove_outliers, x_label) {
-  # remove outliers
-  if (remove_outliers) { details <- remove_outliers(details, feature) }
-  plotting_data <- details
+  # create plotting data
+  if (feature == "All") {
+    features <- c("average", "averageweight", "owned", "playingtime", "minage", "yearpublished")
+    titles <- c("Average Rating", "Average Complexity", "Number Owned", "Playing Time", "Minimum Age", "Year Published")
+    plotting_data <- do.call("rbind", lapply(1:length(features), function(x) {
+      if (remove_outliers) { details <- remove_outliers(details, features[x]) }
+      df <- details %>% select(name, id, as.character(features[x]))
+      names(df) <- c("name", "id", "value")
+      df$feature <- rep(titles[x], nrow(df))
+      df
+    }))
+  }
+  else {
+    if (remove_outliers) { details <- remove_outliers(details, feature) }
+    plotting_data <- details %>% select(name, id, feature)
+    names(plotting_data) <- c("name", "id", "value")
+  }
+  game_values <- plotting_data %>% filter(id == game_id)
   
   # create one of the two possible plots: boxplot or density plot
-  plot <- ggplot(plotting_data, aes(x = get(feature))) + theme_bw()
+  plot <- ggplot(plotting_data, aes(x = value)) + theme_bw() +
+    theme(axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank())
   # create a boxplot
   if (plot_type == "Boxplot") {
-    plot <- plot + geom_boxplot(color = "royalblue", fill = "royalblue", alpha = 0.25, linewidth = 1.2, fatten = 1, outlier.size = 2.5) +
-      theme(axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank()) +
+    plot <- plot + geom_boxplot(fill = "black", alpha = 0.25, linewidth = 1.2, fatten = 1, outlier.size = 2.5) +
       scale_y_continuous(limits = c(-2, 2))
   }
   # create a density plot
   if (plot_type == "Density Plot") { 
-    plot <- plot + geom_density(color = "royalblue", fill = "royalblue", alpha = 0.25, linewidth = 1.2) + labs(y = "Density") 
+    plot <- plot + geom_density(fill = "black", alpha = 0.25, linewidth = 1.2)
+  }
+  if (feature == "All") {
+    plot <- plot + facet_wrap(~feature, scales = "free") +
+      theme(axis.title.x = element_blank(), axis.text.x = element_text(size = 12), strip.text = element_text(size = 14))
+  }
+  if (feature != "All") {
+    plot <- plot + labs(x = x_label)
   }
   # add the dashed line that represents the feature value associated with the selected game
-  plot + geom_vline(xintercept = (plotting_data %>% filter(id == game_id))[[feature]], color = "black", linewidth = 1.2, linetype = "longdash") + 
-    labs(x = x_label) + theme(axis.text = element_text(size = 14), axis.title = element_text(size = 16))
+  plot + geom_vline(data = game_values, aes(xintercept = value), color = "red", linewidth = 1.2, linetype = "longdash") + 
+    theme(axis.text = element_text(size = 14), axis.title = element_text(size = 16))
 }
 
 plot_group_comparison <- function(expanded_details, expanded_column, game_id, n, metric, plot_type, feature, group, remove_outliers, sort, x_label) {
-  # remove outliers
-  if (remove_outliers) { expanded_details <- remove_outliers(expanded_details, feature) }
   # filter the data so that the only levels of the group remaining are those associated with the specified game
-  if (is.na(n)) { plotting_data <- filter(expanded_details, get(group) %in% (expanded_column %>% filter(id == game_id))[[group]]) }
+  if (is.na(n)) { 
+    expanded_details <- filter(expanded_details, get(group) %in% (expanded_column %>% filter(id == game_id))[[group]])
+    if (feature == "All") {
+      features <- c("average", "averageweight", "owned", "playingtime", "minage", "yearpublished")
+      titles <- c("Average Rating", "Average Complexity", "Number Owned", "Playing Time", "Minimum Age", "Year Published")
+      plotting_data <- do.call("rbind", lapply(1:length(features), function(x) {
+        if (remove_outliers) { expanded_details <- remove_outliers(expanded_details, features[x]) }
+        df <- expanded_details %>% select(name, id, as.character(group), as.character(features[x]))
+        names(df) <- c("name", "id", group, "value")
+        df$feature <- rep(titles[x], nrow(df))
+        df
+      }))
+    }
+    else {
+      if (remove_outliers) { expanded_details <- remove_outliers(expanded_details, feature) }
+      plotting_data <- select(expanded_details, id, name, group, feature)
+      names(plotting_data) <- c("id", "name", group, "value")
+      # sort the data based on the median feature values for each level of the group
+      if (sort) { plotting_data <- sort_data(plotting_data, group, "value") }
+    }
+    game_values <- plotting_data %>% filter(id == game_id)
+  }
   # filter the data so that the only levels of the group remaining are the top n levels
   if (is.na(game_id)) {
+    if (remove_outliers) { expanded_details <- remove_outliers(expanded_details, feature) }
     # remove the observations that have no designer
     if (group == "designer") { expanded_details <- filter(expanded_details, designer != "(Uncredited)") }
     top_levels <- find_top_n_levels(expanded_details, group, n, metric)[[group]]
     plotting_data <- filter(expanded_details, get(group) %in% as.character(top_levels))
     plotting_data[[group]] <- factor(plotting_data[[group]], levels = top_levels)
+    plotting_data <- select(plotting_data, id, name, group, feature)
+    names(plotting_data) <- c("id", "name", group, "value")
+    # sort the data based on the median feature values for each level of the group
+    if (sort) { plotting_data <- sort_data(plotting_data, group, "value") }
   }
-  # sort the data based on the median feature values for each level of the group
-  if (sort) { plotting_data <- sort_data(plotting_data, group, feature) }
   
   # create one of the four possible plots: boxplot, violin plot, density plot, or ridgeline plot
-  plot <- ggplot(plotting_data, aes(x = get(feature), color = get(group), fill = get(group))) + theme_bw()
+  plot <- ggplot(plotting_data, aes(x = value, color = get(group), fill = get(group))) + theme_bw()
   # create a boxplot
   if (plot_type == "Boxplot") {
     plot <- plot + geom_boxplot(aes(y = get(group)), alpha = 0.25, linewidth = 1.2, fatten = 1, outlier.size = 2.5) +
@@ -81,17 +125,23 @@ plot_group_comparison <- function(expanded_details, expanded_column, game_id, n,
   }
   # create a density plot
   if (plot_type == "Density Plot") {
-    plot <- plot + geom_density(alpha = 0.1, linewidth = 1.2) + labs(y = "Density")
+    plot <- plot + geom_density(alpha = 0.1, linewidth = 1.2) + 
+      theme(axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank())
   }
   # create a ridgeline plot
   if (plot_type == "Ridgeline Plot") {
     plot <- plot + geom_density_ridges(aes(y = get(group)), alpha = 0.25, size = 1.2) +
       theme(legend.position = "none", axis.title.y = element_blank())
   }
+  if (feature == "All") {
+    plot <- plot + facet_wrap(~feature, scales = "free_x") +
+      theme(axis.title.x = element_blank(), axis.text.x = element_text(size = 12), axis.text.y = element_text(size = 12), strip.text = element_text(size = 14))
+  }
   # add the dashed line that represents the feature value associated with the selected game
-  # if game_id is NA, then this line does not appear on the plot
-  plot + geom_vline(xintercept = (plotting_data %>% filter(id == game_id))[[feature]][1], color = "black", linewidth = 1.2, linetype = "longdash") +
-    labs(x = x_label, color = str_to_title(group), fill = str_to_title(group)) +
+  if (is.na(n)) {
+    plot <- plot + geom_vline(data = game_values, aes(xintercept = value), color = "black", linewidth = 1.2, linetype = "longdash")
+  }
+  plot + labs(x = x_label, color = str_to_title(group), fill = str_to_title(group)) +
     theme(axis.text = element_text(size = 14), axis.title = element_text(size = 16))
 }
 
