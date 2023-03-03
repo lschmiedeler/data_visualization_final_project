@@ -84,14 +84,22 @@ fluidPage(
     navbarMenu(
       "Anaylze Groups of Games",
       tabPanel(
-        "View Category, Mechanic, and Designer Information",
-        h4("View Category, Mechanic, and Designer Information"),
+        "View and Plot Category, Mechanic, and Designer Information",
+        h4("View and Plot Category, Mechanic, and Designer Information"),
         selectizeInput("group_2", strong("Select a Group"), choices = 3),
         selectizeInput("level_1", strong("Select a Level"), choices = 100),
-        h5("Mean Feature Values"),
-        tableOutput("mean_level_information"),
-        h5("Median Feature Values"),
-        tableOutput("median_level_information"),
+        br(),
+        h5("Summarize Feature Values"),
+        htmlOutput("number_of_games"),
+        tableOutput("feature_summary"),
+        br(),
+        h5("Plot Feature Values"),
+        fluidRow(
+          column(6, selectInput("remove_outliers_3", strong("Remove Outliers?"), choices = list("No" = FALSE, "Yes" = TRUE))),
+          column(6, selectInput("plot_type_3", strong("Select a Plot Type"), choices = list("Boxplot", "Density Plot")))
+        ),
+        plotOutput("level_data", height = 600),
+        br(), br(),
         fluidRow(
           column(4, h5("Popular Games"), tableOutput("popular_games_in_level")),
           column(4, h5("Highest Rated Games"), tableOutput("highest_rated_games_in_level")),
@@ -125,8 +133,8 @@ fluidPage(
             ),
             sliderInput("n_2", strong("Select a Limit for the Number of Top Levels"), min = 1, max = 50, value = 10),
             selectInput("feature_3", strong("Select a Feature"), choices = features),
-            radioButtons("remove_outliers_3", strong("Remove Feature Outliers?"), choices = list("No" = FALSE, "Yes" = TRUE)),
-            selectInput("plot_type_3", strong("Select a Plot Type"), choices = list("Boxplot", "Violin Plot", "Density Plot", "Ridgeline Plot")),
+            radioButtons("remove_outliers_4", strong("Remove Feature Outliers?"), choices = list("No" = FALSE, "Yes" = TRUE)),
+            selectInput("plot_type_4", strong("Select a Plot Type"), choices = list("Boxplot", "Violin Plot", "Density Plot", "Ridgeline Plot")),
             radioButtons("sort_1", strong("Sort by Median Feature Value?"), choices = list("No" = FALSE, "Yes" = TRUE))
           ),
           mainPanel(plotOutput("top_levels_comparison", height = 600))
@@ -142,18 +150,18 @@ fluidPage(
               "metric_3", strong("Select a Metric to Determine the Top Levels of the Group"), 
               choices = list("Number of Different Games", "Number Owned", "Average Rating")
             ),
-            sliderInput("n_3", strong("Select a Limit for the Number of Top Levels"), min = 1, max = 50, value = 10),
-            selectInput("feature_4", strong("Select a Feature"), choices = features),
-            radioButtons("remove_outliers_4", strong("Remove Feature Outliers?"), choices = list("No" = FALSE, "Yes" = TRUE)),
-            sliderInput("years_1", strong("Select a Year Range"), min = 1950, max = 2023, value = c(2000, 2023)),
-            selectInput("plot_type_4", strong("Select a Plot Type"), choices = list("Scatterplot", "Heat Map")),
-            sliderInput("year_bin_size_1", strong("Select a Year Bin Size for the Heat Map"), min = 1, max = 10, value = 1)
+            sliderInput("n_3", strong("Select a Limit for the Number of Top Levels"), min = 1, max = 25, value = 10),
+            selectInput("feature_4", strong("Select a Feature"), choices = features[features != "Year Published"]),
+            radioButtons("remove_outliers_5", strong("Remove Feature Outliers?"), choices = list("No" = FALSE, "Yes" = TRUE)),
+            sliderInput("years_1", strong("Select a Year Range"), min = 1980, max = 2023, value = c(2000, 2023)),
+            selectInput("plot_type_5", strong("Select a Plot Type"), choices = list("Scatterplot", "Heat Map")),
+            radioButtons("add_line_1", strong("Add Line to Scatterplot?"), choices = list("No" = FALSE, "Yes" = TRUE)),
           ),
           mainPanel(
-            "main panel"
+            plotOutput("groups_over_time", height = 700)
           )
         )
-        # heat map
+        # heat map or (faceted) scatterplot
         # select a group: categories or mechanics
         # select a metric: average rating, average complexity, others?
         # select a limit: from 1-50
@@ -176,8 +184,12 @@ fluidPage(
             "main panel"
           )
         )
+        # overall summary of data
+        # include table and plots (boxplot and density plot)
+        
         # data table
-        # filter on feature values
+        # filter on feature values and display result
+        # ability to then sort on a feature and reverse sort
       ),
       tabPanel(
         "Plot Games Over Time",
@@ -185,11 +197,11 @@ fluidPage(
         sidebarLayout(
           sidebarPanel(
             selectInput("feature_5", strong("Select a Feature"), choices = features),
-            radioButtons("remove_outliers_5", strong("Remove Feature Outliers?"), choices = list("No" = FALSE, "Yes" = TRUE)),
+            radioButtons("remove_outliers_6", strong("Remove Feature Outliers?"), choices = list("No" = FALSE, "Yes" = TRUE)),
             sliderInput("years_2", strong("Select a Year Range"), min = 1950, max = 2023, value = c(2000, 2023)),
-            selectInput("plot_type_5", strong("Select a Plot Type"), choices = list("Scatterplot", "Ridgeline Plot")),
-            radioButtons("add_line", strong("Add Line to Scatterplot?"), choices = list("No" = FALSE, "Yes" = TRUE)),
-            sliderInput("year_bin_size_2", strong("Select a Year Bin Size for the Ridgeline Plot"), min = 1, max = 10, value = 1)
+            selectInput("plot_type_6", strong("Select a Plot Type"), choices = list("Scatterplot", "Ridgeline Plot")),
+            radioButtons("add_line_2", strong("Add Line to Scatterplot?"), choices = list("No" = FALSE, "Yes" = TRUE)),
+            sliderInput("year_bin_size_1", strong("Select a Year Bin Size for the Ridgeline Plot"), min = 1, max = 10, value = 1)
           ),
           mainPanel(plotOutput("games_over_time", height = 600))
         )

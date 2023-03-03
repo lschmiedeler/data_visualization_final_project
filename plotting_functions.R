@@ -16,36 +16,60 @@ sort_data_by_median <- function(df, group, feature) {
   df
 }
 
-find_top_n_levels <- function(df, group, n, metric) {
+create_plotting_data <- function(df, group, remove_outliers) {
+  # reformat the data so that it can be easily faceted on the feature variable
+  features <- c("average", "averageweight", "owned", "playingtime", "minage", "yearpublished")
+  titles <- c("Average Rating", "Average Complexity", "Number Owned", "Playing Time", "Minimum Age", "Year Published")
+  do.call("rbind", lapply(1:length(features), function(x) {
+    if (remove_outliers) { df <- remove_outliers(df, features[x]) }
+    if (is.na(group)) {
+      temp_df <- select(df, id, name, as.character(features[x]))
+      names(temp_df) <- c("id", "name", "value")
+    }
+    else {
+      temp_df <- select(df, id, name, as.character(group), as.character(features[x]))
+      names(temp_df) <- c("id", "name", group, "value")
+    }
+    temp_df$feature <- rep(titles[x], nrow(temp_df))
+    temp_df
+  }))
+}
+
+find_top_n_levels <- function(df, group, metric, n) {
   # find the top n levels of the specified group according to the specified metric
   df <- group_by(df, get(group))
   if (metric == "Number of Different Games") { df <- summarize(df, value = n()) }
   if (metric == "Number Owned") { df <- summarize(df, value = sum(owned)) }
   if (metric == "Average Rating") { df <- summarize(df, value = mean(average)) }
-  df <- top_n(df, n, value) %>% arrange(value)
+  df <- top_n(df, n, value) %>% arrange(-value)
   names(df) <- c(group, "value")
   df[[group]] <- factor(df[[group]], levels = df[[group]])
   df
 }
 
-filter_top_n_levels <- function(df, group, n, metric) {
-  # use find_top_n_levels function
-  # then filter df based on these top n levels
+filter_top_n_levels <- function(df, group, metric, n, feature, remove_outliers, year, sort) {
+  # filter the data so that the only levels of the group remaining are the top n levels
+  if (remove_outliers) { df <- remove_outliers(df, feature) }
+  if (group == "designer") { df <- filter(df, designer != "(Uncredited)") }
+  top_levels <- find_top_n_levels(df, group, metric, n)[[group]]
+  plotting_data <- filter(df, get(group) %in% as.character(top_levels))
+  plotting_data[[group]] <- factor(plotting_data[[group]], levels = top_levels)
+  if (year) { 
+    plotting_data <- select(plotting_data, id, name, yearpublished, as.character(group), as.character(feature))
+    names(plotting_data) <- c("id", "name", "yearpublished", group, "value")
+  }
+  else {
+    plotting_data <- select(plotting_data, id, name, as.character(group), as.character(feature))
+    names(plotting_data) <- c("id", "name", group, "value")
+  }
+  if (sort) { plotting_data <- sort_data_by_median(plotting_data, group, "value") }
+  plotting_data
 }
 
-plot_game_comparison <- function(details, game_id, feature, remove_outliers, plot_type, x_label) {
+plot_single_comparison <- function(details, game_id, group, level, feature, remove_outliers, plot_type, x_label) {
   # create plotting data
-  if (feature == "All") {
-    features <- c("average", "averageweight", "owned", "playingtime", "minage", "yearpublished")
-    titles <- c("Average Rating", "Average Complexity", "Number Owned", "Playing Time", "Minimum Age", "Year Published")
-    plotting_data <- do.call("rbind", lapply(1:length(features), function(x) {
-      if (remove_outliers) { details <- remove_outliers(details, features[x]) }
-      df <- select(details, name, id, as.character(features[x]))
-      names(df) <- c("name", "id", "value")
-      df$feature <- rep(titles[x], nrow(df))
-      df
-    }))
-  }
+  if (!is.na(level)) { details <- filter(details, get(group) == level) }
+  if (feature == "All") { plotting_data <- create_plotting_data(details, NA, remove_outliers) }
   else {
     if (remove_outliers) { details <- remove_outliers(details, feature) }
     plotting_data <- select(details, name, id, as.character(feature))
@@ -67,7 +91,7 @@ plot_game_comparison <- function(details, game_id, feature, remove_outliers, plo
   }
   if (feature == "All") {
     plot <- plot + facet_wrap(~feature, scales = "free") +
-      theme(axis.title.x = element_blank(), axis.text.x = element_text(size = 12), strip.text = element_text(size = 14))
+      theme(axis.title.x = element_blank(), axis.text.x = element_text(size = 14), strip.text = element_text(size = 16))
   }
   if (feature != "All") { plot <- plot + labs(x = x_label) }
   # add the dashed line that represents the feature value associated with the selected game
@@ -77,42 +101,21 @@ plot_game_comparison <- function(details, game_id, feature, remove_outliers, plo
 
 plot_group_comparison <- function(expanded_details, expanded_column, game_id, group, metric, n,
                                   feature, remove_outliers, plot_type, sort, x_label) {
+  # create plotting data
   # filter the data so that the only levels of the group remaining are those associated with the specified game
   if (is.na(n)) { 
     expanded_details <- filter(expanded_details, get(group) %in% (expanded_column %>% filter(id == game_id))[[group]])
-    if (feature == "All") {
-      features <- c("average", "averageweight", "owned", "playingtime", "minage", "yearpublished")
-      titles <- c("Average Rating", "Average Complexity", "Number Owned", "Playing Time", "Minimum Age", "Year Published")
-      plotting_data <- do.call("rbind", lapply(1:length(features), function(x) {
-        if (remove_outliers) { expanded_details <- remove_outliers(expanded_details, features[x]) }
-        df <- select(expanded_details, name, id, as.character(group), as.character(features[x]))
-        names(df) <- c("name", "id", group, "value")
-        df$feature <- rep(titles[x], nrow(df))
-        df
-      }))
-    }
+    if (feature == "All") { plotting_data <- create_plotting_data(expanded_details, group, remove_outliers) }
     else {
       if (remove_outliers) { expanded_details <- remove_outliers(expanded_details, feature) }
       plotting_data <- select(expanded_details, id, name, as.character(group), as.character(feature))
       names(plotting_data) <- c("id", "name", group, "value")
-      # sort the data based on the median feature values for each level of the group
       if (sort) { plotting_data <- sort_data_by_median(plotting_data, group, "value") }
     }
     game_values <- plotting_data %>% filter(id == game_id)
   }
   # filter the data so that the only levels of the group remaining are the top n levels
-  if (is.na(game_id)) {
-    if (remove_outliers) { expanded_details <- remove_outliers(expanded_details, feature) }
-    # remove the observations that have no designer
-    if (group == "designer") { expanded_details <- filter(expanded_details, designer != "(Uncredited)") }
-    top_levels <- find_top_n_levels(expanded_details, group, n, metric)[[group]]
-    plotting_data <- filter(expanded_details, get(group) %in% as.character(top_levels))
-    plotting_data[[group]] <- factor(plotting_data[[group]], levels = top_levels)
-    plotting_data <- select(plotting_data, id, name, as.character(group), as.character(feature))
-    names(plotting_data) <- c("id", "name", group, "value")
-    # sort the data based on the median feature values for each level of the group
-    if (sort) { plotting_data <- sort_data_by_median(plotting_data, group, "value") }
-  }
+  if (is.na(game_id)) { plotting_data <- filter_top_n_levels(expanded_details, group, metric, n, feature, remove_outliers, FALSE, sort) }
   
   # create one of the four possible plots: boxplot, violin plot, density plot, or ridgeline plot
   plot <- ggplot(plotting_data, aes(x = value, color = get(group), fill = get(group))) + theme_bw()
@@ -132,11 +135,14 @@ plot_group_comparison <- function(expanded_details, expanded_column, game_id, gr
   if (feature == "All") {
     if (plot_type == "Density Plot") { plot <- plot + facet_wrap(~feature, scales = "free") }
     else { plot <- plot + facet_wrap(~feature, scales = "free_x") }
-    plot <- plot + theme(axis.title.x = element_blank(), axis.text.x = element_text(size = 12), strip.text = element_text(size = 14))
+    plot <- plot + theme(axis.title.x = element_blank(), strip.text = element_text(size = 16))
   }
   if (plot_type == "Density Plot") { plot <- plot + theme(axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank()) }
   # add the dashed line that represents the feature value associated with the selected game
   if (is.na(n)) { plot <- plot + geom_vline(data = game_values, aes(xintercept = value), color = "black", linewidth = 1.2, linetype = "longdash") }
+  if (!(is.na(n)) & plot_type != "Density Plot") {
+    plot <- plot + scale_y_discrete(limits = rev)
+  }
   if (!(is.na(n)) & n >= 40) {
     plot <- plot + theme(axis.text.y = element_text(size = 12))
     if (n >= 45) { plot <- plot + theme(axis.text.y = element_text(size = 10)) }
@@ -149,12 +155,13 @@ plot_top_bar_chart <- function(expanded_details, group, metric, n) {
   # remove the observations that have no designer
   if (group == "designer") { expanded_details <- filter(expanded_details, designer != "(Uncredited)") }
   # find the top levels in the specified group according to the specified metric
-  plotting_data <- find_top_n_levels(expanded_details, group, n, metric)
+  plotting_data <- find_top_n_levels(expanded_details, group, metric, n)
   
   # create a bar plot
   plot <- ggplot(plotting_data, aes(x = get(group), y = value)) +
     geom_bar(stat = "identity") +
     coord_flip() +
+    scale_x_discrete(limits = rev) + 
     labs(y = metric) +
     theme_bw() +
     theme(axis.title.y = element_blank(), axis.text = element_text(size = 14), axis.title = element_text(size = 16))
@@ -168,12 +175,45 @@ plot_top_bar_chart <- function(expanded_details, group, metric, n) {
   plot
 }
 
-plot_heat_map <- function() {
+plot_groups_over_time <- function(expanded_details, group, metric, n, feature, remove_outliers, years, plot_type, add_line, label) {
+  # create plotting data
+  # filter the years based on the specified year range
+  expanded_details <- filter(expanded_details, yearpublished >= years[1], yearpublished <= years[2])
+  plotting_data <- filter_top_n_levels(expanded_details, group, metric, n, feature, remove_outliers, TRUE, FALSE)
   
+  plot <- ggplot(plotting_data, aes(x = yearpublished)) + theme_bw()
+  if (plot_type == "Heat Map") {
+    plot <- plot + geom_tile(aes(y = get(group), fill = value)) +
+      coord_fixed() +
+      scale_y_discrete(limits = rev) + 
+      scale_fill_viridis_c(option = "inferno") +
+      labs(x = "Year Published", fill = label) +
+      theme(axis.title.x = element_text(size = 16), axis.text = element_text(size = 14), axis.title.y = element_blank(),
+            legend.position = "top", legend.title = element_text(size = 16), legend.text = element_text(size = 14), legend.key.width = unit(2, "cm"))
+    if (n >= 40) {
+      plot <- plot + theme(axis.text.y = element_text(size = 12))
+      if (n >= 45) { plot <- plot + theme(axis.text.y = element_text(size = 10)) }
+    }
+  }
+  if (plot_type == "Scatterplot") {
+    plot <- plot + geom_jitter(aes(y = value, color = get(group)), alpha = 0.25, height = 0.5, width = 0.5) +
+      facet_wrap(~get(group)) +
+      theme(axis.title = element_text(size = 16), axis.text = element_text(size = 14), 
+            strip.text = element_text(size = 14), legend.position = "none") +
+      labs(x = "Year Published", y = label)
+    if (add_line) {
+      plot <- plot + geom_smooth(aes(x = yearpublished, y = value), method = "lm", se = FALSE, color = "black")
+    }
+    if (n >= 15) {
+      plot <- plot + theme(axis.text = element_text(size = 12))
+      if (n >= 20) { plot <- plot + theme(axis.text = element_text(size = 10)) }
+    }
+  }
+  plot
 }
 
 plot_games_over_time <- function(details, feature, remove_outliers, years, plot_type, add_line, year_bin_size, label) {
-  # remove outliers
+  # create plotting data
   if (remove_outliers) { details <- remove_outliers(details, feature) }
   # filter the years based on the specified year range
   plotting_data <- filter(details, yearpublished >= years[1], yearpublished <= years[2])
@@ -192,7 +232,7 @@ plot_games_over_time <- function(details, feature, remove_outliers, years, plot_
     plotting_data$yearpublished <- plotting_data$yearpublished - plotting_data$yearpublished %% year_bin_size
     plot <- ggplot(plotting_data, aes(y = as.factor(yearpublished), x = get(feature), fill = after_stat(x))) +
       geom_density_ridges_gradient(scale = 4) +
-      scale_fill_viridis_c(option = "plasma") +
+      scale_fill_viridis_c(option = "inferno") +
       labs(x = label, y = "Year Published")
   }
   plot <- plot + theme_bw() + theme(axis.text = element_text(size = 14), axis.title = element_text(size = 16), legend.position = "none")

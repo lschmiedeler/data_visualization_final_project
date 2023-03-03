@@ -54,9 +54,9 @@ function(input, output, session) {
   
   output$game_details <- renderTable(
     details %>% filter(id == input$game_id) %>%
-      select(name, yearpublished, playingtime, minage, average, averageweight, owned) %>%
-      rename("Name" = name, "Year Published" = yearpublished, "Playing Time" = playingtime, "Minimum Age" = minage,
-             "Average Rating" = average, "Average Complexity" = averageweight, "Number Owned" = owned)
+      select(name, averageweight, average, minage, owned, playingtime, yearpublished) %>%
+      rename("Name" = name, "Average Complexity" = averageweight, "Average Rating" = average, "Minimum Age" = minage,
+             "Number Owned" = owned, "Playing Time" = playingtime, "Year Published" = yearpublished)
   )
   
   output$game_categories <- renderTable(categories %>% filter(id == input$game_id) %>%  select(category) %>% rename("Categories" = category))
@@ -64,7 +64,7 @@ function(input, output, session) {
   output$game_designers <- renderTable(designers %>% filter(id == input$game_id) %>% select(designer) %>% rename("Designers" = designer))
   
   output$all_game_comparison <- renderPlot(
-    plot_game_comparison(details, input$game_id, find_feature(input$feature_1), as.logical(input$remove_outliers_1), input$plot_type_1, input$feature_1)
+    plot_single_comparison(details, input$game_id, NA, NA, find_feature(input$feature_1), as.logical(input$remove_outliers_1), input$plot_type_1, input$feature_1)
   )
   
   output$similar_game_comparison <- renderPlot(
@@ -89,17 +89,19 @@ function(input, output, session) {
     else if (group() == "designer") { details_and_designers %>% filter(designer == input$level_1) }
   })
   
-  output$mean_level_information <- renderTable(
-    level_data() %>% summarize(
-      "Year Published" = mean(yearpublished), "Playing Time" = mean(playingtime), "Minimum Age" = mean(minage),
-      "Average Rating" = mean(average), "Average Complexity" = mean(averageweight), "Number Owned" = mean(owned)
-    )
+  output$number_of_games <- renderText(
+    paste("<b>Number of Different Games:</b>", nrow(level_data()))
   )
-  output$median_level_information <- renderTable(
-    level_data() %>% summarize(
-      "Year Published" = median(yearpublished), "Playing Time" = median(playingtime), "Minimum Age" = median(minage),
-      "Average Rating" = median(average), "Average Complexity" = median(averageweight), "Number Owned" = median(owned)
-    )
+  output$feature_summary <- renderTable(
+    data.frame(do.call(cbind, lapply(level_data() %>% select(averageweight, average, minage, owned, playingtime, yearpublished), summary))) %>%
+      rename("Average Complexity" = averageweight, "Average Rating" = average, "Minimum Age" = minage,
+             "Number Owned" = owned, "Playing Time" = playingtime, "Year Published" = yearpublished) %>%
+      mutate(metric = c("Minimum", "1st Quartile", "Median", "Mean", "3rd Quartile", "Maximum")) %>%
+      relocate(metric) %>%
+      rename(" " = metric)
+  )
+  output$level_data <- renderPlot(
+    plot_single_comparison(pick_expanded_details(input$group_2), NA, input$group_2, input$level_1, "All", input$remove_outliers_3, input$plot_type_3, "")
   )
   output$popular_games_in_level <- renderTable(
     level_data() %>% top_n(20, owned) %>% arrange(-owned) %>% select(name, average, owned) %>%
@@ -122,14 +124,21 @@ function(input, output, session) {
   output$top_levels_comparison <- renderPlot(
     plot_group_comparison(
       pick_expanded_details(input$group_4), pick_expanded_column(input$group_4), NA, input$group_4, input$metric_2, input$n_2, 
-      find_feature(input$feature_3), as.logical(input$remove_outliers_3), input$plot_type_3, as.logical(input$sort_1), input$feature_3
+      find_feature(input$feature_3), as.logical(input$remove_outliers_4), input$plot_type_4, as.logical(input$sort_1), input$feature_3
+    )
+  )
+  
+  output$groups_over_time <- renderPlot(
+    plot_groups_over_time(
+      pick_expanded_details(input$group_5), input$group_5, input$metric_3, input$n_3, find_feature(input$feature_4),
+      as.logical(input$remove_outliers_5), input$years_1, input$plot_type_5, as.logical(input$add_line_1), input$feature_4
     )
   )
 
   output$games_over_time <- renderPlot(
     plot_games_over_time(
-      details, find_feature(input$feature_5), as.logical(input$remove_outliers_5), input$years_2, 
-      input$plot_type_5, as.logical(input$add_line), input$year_bin_size_2, input$feature_5
+      details, find_feature(input$feature_5), as.logical(input$remove_outliers_6), input$years_2, 
+      input$plot_type_6, as.logical(input$add_line_2), input$year_bin_size_1, input$feature_5
     )
   )
 }
