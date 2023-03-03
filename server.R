@@ -47,10 +47,11 @@ function(input, output, session) {
       rename("Name" = name, "Average Rating" = average, "Number Owned" = owned)
   )
   
-  selected_game <- reactive({ paste0("<b> Selected Game: ", (details %>% filter(id == input$game_id))$name, "</b>") })
-  output$selected_game_1 <- renderUI(HTML(selected_game()))
-  output$selected_game_2 <- renderUI(HTML(selected_game()))
-  output$selected_game_3 <- renderUI(HTML(selected_game()))
+  selected_game_1 <- reactive({ (details %>% filter(id == input$game_id))$name })
+  output$selected_game_1 <- renderUI(HTML(selected_game_1()))
+  selected_game_2 <- reactive({ paste("<b>Selected Game:</b>", (details %>% filter(id == input$game_id))$name) })
+  output$selected_game_2 <- renderUI(HTML(selected_game_2()))
+  output$selected_game_3 <- renderUI(HTML(selected_game_2()))
   
   image_src <- reactive({ (details %>% filter(id == input$game_id))$image })
   output$game_image <- renderText({paste0("<img src=\"", image_src(), "\" style=\"width:75%\">")})

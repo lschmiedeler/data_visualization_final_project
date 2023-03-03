@@ -9,7 +9,7 @@ remove_outliers <- function(df, feature) {
 
 sort_data_by_median <- function(df, group, feature) {
   # convert the specified group into a factor where the order of the levels is determined by the median feature values for each level
-  correct_order <- df %>% group_by(get(group)) %>% summarize(median = median(get(feature))) %>% arrange(-median)
+  correct_order <- df %>% group_by(get(group)) %>% summarize(median = median(get(feature))) %>% arrange(median)
   names(correct_order) <- c(group, "median")
   correct_order <- correct_order[[group]]
   df[[group]] <- factor(df[[group]], levels = rev(correct_order))
@@ -91,7 +91,7 @@ plot_single_comparison <- function(details, game_id, group, level, feature, remo
   }
   if (feature == "All") {
     plot <- plot + facet_wrap(~feature, scales = "free") +
-      theme(axis.title.x = element_blank(), axis.text.x = element_text(size = 14), strip.text = element_text(size = 16))
+      theme(axis.title.x = element_blank(), strip.text = element_text(size = 16))
   }
   if (feature != "All") { plot <- plot + labs(x = x_label) }
   # add the dashed line that represents the feature value associated with the selected game
@@ -127,7 +127,7 @@ plot_group_comparison <- function(expanded_details, expanded_column, game_id, gr
   if (plot_type == "Density Plot") {
     plot <- plot + geom_density(alpha = 0.1, linewidth = 1.2) + 
       theme(axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank(),
-            legend.position = "top", legend.title = element_text(size = 14), legend.text = element_text(size = 12))
+            legend.position = "top", legend.title = element_text(size = 16), legend.text = element_text(size = 15))
   }
   # create a ridgeline plot
   if (plot_type == "Ridgeline Plot") { plot <- plot + geom_density_ridges(aes(y = get(group)), alpha = 0.25, size = 1.2) }
@@ -138,11 +138,9 @@ plot_group_comparison <- function(expanded_details, expanded_column, game_id, gr
     plot <- plot + theme(axis.title.x = element_blank(), strip.text = element_text(size = 16))
   }
   if (plot_type == "Density Plot") { plot <- plot + theme(axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank()) }
+  if (plot_type != "Density Plot") { plot <- plot + scale_y_discrete(limits = rev) }
   # add the dashed line that represents the feature value associated with the selected game
   if (is.na(n)) { plot <- plot + geom_vline(data = game_values, aes(xintercept = value), color = "black", linewidth = 1.2, linetype = "longdash") }
-  if (!(is.na(n)) & plot_type != "Density Plot") {
-    plot <- plot + scale_y_discrete(limits = rev)
-  }
   if (!(is.na(n)) & n >= 40) {
     plot <- plot + theme(axis.text.y = element_text(size = 12))
     if (n >= 45) { plot <- plot + theme(axis.text.y = element_text(size = 10)) }
@@ -183,7 +181,9 @@ plot_groups_over_time <- function(expanded_details, group, metric, n, feature, r
   
   plot <- ggplot(plotting_data, aes(x = yearpublished)) + theme_bw()
   if (plot_type == "Heat Map") {
-    plot <- plot + geom_tile(aes(y = get(group), fill = value)) +
+    plotting_data <- plotting_data %>% group_by(yearpublished, get(group)) %>% summarize(value = mean(value))
+    names(plotting_data) <- c("yearpublished", group, "value")
+    plot <- plot + geom_tile(data = plotting_data, aes(y = get(group), fill = value)) +
       coord_fixed() +
       scale_y_discrete(limits = rev) + 
       scale_fill_viridis_c(option = "inferno") +

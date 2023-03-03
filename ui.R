@@ -13,7 +13,7 @@ fluidPage(
       HTML("<em>All of the data used to create this application comes from the <b>BoardGameGeek Reviews</b> dataset on Kaggle.</em>"),
       br(), br(),
       HTML("The <b>games_detailed_info.csv</b> file in this dataset contains information about 21,631 board games.
-            The file contains 56 features, and the following 10 features are used in this dashboard:
+           The following 10 features are a subset of the features in this file and are used in this dashboard:
            <ul>
            <li> <b>Name:</b> name of the board game </li>
            <li> <b>Year Published:</b> year of the board game's publication </li>
@@ -35,7 +35,7 @@ fluidPage(
           column(
             3, selectizeInput("game_id", h4("Select a Game"), choices = 100),
             em("If you do not see the game you want to analyze, search for it."),
-            br(), br(), br(), span(htmlOutput("selected_game_1")),
+            br(), br(), h5("Selected Game:"), span(htmlOutput("selected_game_1")),
             br(), htmlOutput("game_image"),
           ),
           column(3, h4("Popular Games"), tableOutput("popular_games")),
@@ -96,8 +96,8 @@ fluidPage(
         br(),
         h5("Plot Feature Values"),
         fluidRow(
-          column(6, selectInput("remove_outliers_3", strong("Remove Outliers?"), choices = list("No" = FALSE, "Yes" = TRUE))),
-          column(6, selectInput("plot_type_3", strong("Select a Plot Type"), choices = list("Boxplot", "Density Plot")))
+          column(6, radioButtons("remove_outliers_3", strong("Remove Feature Outliers?"), choices = list("No" = FALSE, "Yes" = TRUE))),
+          column(6, radioButtons("plot_type_3", strong("Select a Plot Type"), choices = list("Boxplot", "Density Plot")))
         ),
         plotOutput("level_data", height = 600),
         br(), br(),
