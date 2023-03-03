@@ -64,13 +64,13 @@ function(input, output, session) {
   output$game_designers <- renderTable(designers %>% filter(id == input$game_id) %>% select(designer) %>% rename("Designers" = designer))
   
   output$all_game_comparison <- renderPlot(
-    plot_game_comparison(details, input$game_id, input$plot_type_1, find_feature(input$feature_1), as.logical(input$remove_outliers_1), input$feature_1)
+    plot_game_comparison(details, input$game_id, find_feature(input$feature_1), as.logical(input$remove_outliers_1), input$plot_type_1, input$feature_1)
   )
   
   output$similar_game_comparison <- renderPlot(
     plot_group_comparison(
-      pick_expanded_details(input$group_1), pick_expanded_column(input$group_1),  input$game_id, NA, NA, input$plot_type_2, find_feature(input$feature_2), 
-      input$group_1, as.logical(input$remove_outliers_2), TRUE, input$feature_2
+      pick_expanded_details(input$group_1), pick_expanded_column(input$group_1), input$game_id, input$group_1, NA, NA, 
+      find_feature(input$feature_2), as.logical(input$remove_outliers_2), input$plot_type_2, TRUE, input$feature_2
     )
   )
   
@@ -95,24 +95,20 @@ function(input, output, session) {
       "Average Rating" = mean(average), "Average Complexity" = mean(averageweight), "Number Owned" = mean(owned)
     )
   )
-  
   output$median_level_information <- renderTable(
     level_data() %>% summarize(
       "Year Published" = median(yearpublished), "Playing Time" = median(playingtime), "Minimum Age" = median(minage),
       "Average Rating" = median(average), "Average Complexity" = median(averageweight), "Number Owned" = median(owned)
     )
   )
-  
   output$popular_games_in_level <- renderTable(
     level_data() %>% top_n(20, owned) %>% arrange(-owned) %>% select(name, average, owned) %>%
       rename("Name" = name, "Average Rating" = average, "Number Owned" = owned)
   )
-  
   output$highest_rated_games_in_level <- renderTable(
     level_data() %>% top_n(20, average) %>% arrange(-average) %>% select(name, average, owned) %>%
       rename("Name" = name, "Average Rating" = average, "Number Owned" = owned)
   )
-  
   output$highest_rated_popular_games_in_level <- renderTable(
     level_data() %>% filter(owned >= quantile(level_data()$owned, 0.95)) %>%
       top_n(20, average) %>% arrange(-average) %>% select(name, average, owned) %>%
@@ -125,15 +121,15 @@ function(input, output, session) {
 
   output$top_levels_comparison <- renderPlot(
     plot_group_comparison(
-      pick_expanded_details(input$group_4), pick_expanded_column(input$group_4), NA, input$n_2, input$metric_2, input$plot_type_3, find_feature(input$feature_3), 
-      input$group_4, as.logical(input$remove_outliers_3), as.logical(input$sort_1), input$feature_3
+      pick_expanded_details(input$group_4), pick_expanded_column(input$group_4), NA, input$group_4, input$metric_2, input$n_2, 
+      find_feature(input$feature_3), as.logical(input$remove_outliers_3), input$plot_type_3, as.logical(input$sort_1), input$feature_3
     )
   )
 
   output$games_over_time <- renderPlot(
     plot_games_over_time(
-      details, input$plot_type_5, find_feature(input$feature_5), input$years_2, input$year_bin_size_2, as.logical(input$remove_outliers_5), 
-      as.logical(input$add_line), input$feature_5
+      details, find_feature(input$feature_5), as.logical(input$remove_outliers_5), input$years_2, 
+      input$plot_type_5, as.logical(input$add_line), input$year_bin_size_2, input$feature_5
     )
   )
 }

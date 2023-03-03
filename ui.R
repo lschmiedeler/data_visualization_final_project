@@ -1,11 +1,11 @@
 library(shiny)
-library(shinythemes)
+library(bslib)
 
-features <- c("Average Rating", "Average Complexity", "Number Owned", "Playing Time", "Minimum Age", "Year Published")
+features <- sort(c("Average Rating", "Average Complexity", "Number Owned", "Playing Time", "Minimum Age", "Year Published"))
 
 fluidPage(
   navbarPage(
-    theme = shinytheme("yeti"),
+    theme = bs_theme(bootswatch = "zephyr"),
     "Board Game Exploration",
     tabPanel(
       "Home",
@@ -31,13 +31,15 @@ fluidPage(
       "Analyze One Game",
       tabPanel(
         "Select a Game",
-        column(
-          3, selectizeInput("game_id", h4("Select a Game"), choices = 100),
-          em("If you do not see the game you want to analyze, search for it."),
-          br(), br(), span(htmlOutput("selected_game_1"), style = "color:blue")
-        ),
-        column(3, h4("Popular Games"), tableOutput("popular_games")),
-        column(6, h4("Highest Rated Popular Games"), tableOutput("highest_rated_popular_games"))
+        fluidRow(
+          column(
+            3, selectizeInput("game_id", h4("Select a Game"), choices = 100),
+            em("If you do not see the game you want to analyze, search for it."),
+            br(), br(), span(htmlOutput("selected_game_1"), style = "color:blue")
+          ),
+          column(3, h4("Popular Games"), tableOutput("popular_games")),
+          column(6, h4("Highest Rated Popular Games"), tableOutput("highest_rated_popular_games"))
+        )
       ),
       tabPanel(
         "View Game Information",
@@ -90,9 +92,11 @@ fluidPage(
         tableOutput("mean_level_information"),
         h5("Median Feature Values"),
         tableOutput("median_level_information"),
-        column(4, h5("Popular Games"), tableOutput("popular_games_in_level")),
-        column(4, h5("Highest Rated Games"), tableOutput("highest_rated_games_in_level")),
-        column(4, h5("Highest Rated Popular Games"), tableOutput("highest_rated_popular_games_in_level"))
+        fluidRow(
+          column(4, h5("Popular Games"), tableOutput("popular_games_in_level")),
+          column(4, h5("Highest Rated Games"), tableOutput("highest_rated_games_in_level")),
+          column(4, h5("Highest Rated Popular Games"), tableOutput("highest_rated_popular_games_in_level"))
+        )
       ),
       tabPanel(
         "View Top Categories, Mechanics, and Designers",
