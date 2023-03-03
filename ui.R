@@ -35,7 +35,8 @@ fluidPage(
           column(
             3, selectizeInput("game_id", h4("Select a Game"), choices = 100),
             em("If you do not see the game you want to analyze, search for it."),
-            br(), br(), span(htmlOutput("selected_game_1"), style = "color:blue")
+            br(), br(), br(), span(htmlOutput("selected_game_1")),
+            br(), htmlOutput("game_image"),
           ),
           column(3, h4("Popular Games"), tableOutput("popular_games")),
           column(6, h4("Highest Rated Popular Games"), tableOutput("highest_rated_popular_games"))
