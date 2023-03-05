@@ -9,10 +9,9 @@ remove_outliers <- function(df, feature) {
 
 sort_data_by_median <- function(df, group, feature) {
   # convert the specified group into a factor where the order of the levels is determined by the median feature values for each level
-  correct_order <- df %>% group_by(get(group)) %>% summarize(median = median(get(feature))) %>% arrange(median)
+  correct_order <- df %>% group_by(get(group)) %>% summarize(median = median(get(feature))) %>% arrange(-median)
   names(correct_order) <- c(group, "median")
-  correct_order <- correct_order[[group]]
-  df[[group]] <- factor(df[[group]], levels = rev(correct_order))
+  df[[group]] <- factor(df[[group]], levels = correct_order[[group]])
   df
 }
 
@@ -115,7 +114,7 @@ plot_group_comparison <- function(expanded_details, expanded_column, game_id, gr
     game_values <- plotting_data %>% filter(id == game_id)
   }
   # filter the data so that the only levels of the group remaining are the top n levels
-  if (is.na(game_id)) { plotting_data <- filter_top_n_levels(expanded_details, group, metric, n, feature, remove_outliers, FALSE, sort) }
+  else { plotting_data <- filter_top_n_levels(expanded_details, group, metric, n, feature, remove_outliers, FALSE, sort) }
   
   # create one of the four possible plots: boxplot, violin plot, density plot, or ridgeline plot
   plot <- ggplot(plotting_data, aes(x = value, color = get(group), fill = get(group))) + theme_bw()
@@ -127,17 +126,19 @@ plot_group_comparison <- function(expanded_details, expanded_column, game_id, gr
   if (plot_type == "Density Plot") {
     plot <- plot + geom_density(alpha = 0.1, linewidth = 1.2) + 
       theme(axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank(),
-            legend.position = "top", legend.title = element_text(size = 16), legend.text = element_text(size = 15))
+            legend.position = "top", legend.title = element_text(size = 16), legend.text = element_text(size = 14))
   }
   # create a ridgeline plot
   if (plot_type == "Ridgeline Plot") { plot <- plot + geom_density_ridges(aes(y = get(group)), alpha = 0.25, size = 1.2) }
   if (plot_type %in% c("Boxplot", "Violin Plot", "Ridgeline Plot")) { plot <- plot + theme(legend.position = "none", axis.title.y = element_blank()) }
   if (feature == "All") {
-    if (plot_type == "Density Plot") { plot <- plot + facet_wrap(~feature, scales = "free") }
-    else { plot <- plot + facet_wrap(~feature, scales = "free_x") }
+    if (plot_type == "Density Plot") { 
+      plot <- plot + facet_wrap(~feature, scales = "free") + 
+        theme(axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank())
+    }
+    else { plot <- plot + facet_wrap(~feature, scales = "free_x") } 
     plot <- plot + theme(axis.title.x = element_blank(), strip.text = element_text(size = 16))
   }
-  if (plot_type == "Density Plot") { plot <- plot + theme(axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank()) }
   if (plot_type != "Density Plot") { plot <- plot + scale_y_discrete(limits = rev) }
   # add the dashed line that represents the feature value associated with the selected game
   if (is.na(n)) { plot <- plot + geom_vline(data = game_values, aes(xintercept = value), color = "black", linewidth = 1.2, linetype = "longdash") }
@@ -150,6 +151,7 @@ plot_group_comparison <- function(expanded_details, expanded_column, game_id, gr
 }
 
 plot_top_bar_chart <- function(expanded_details, group, metric, n) {
+  # create plotting data
   # remove the observations that have no designer
   if (group == "designer") { expanded_details <- filter(expanded_details, designer != "(Uncredited)") }
   # find the top levels in the specified group according to the specified metric
@@ -173,15 +175,34 @@ plot_top_bar_chart <- function(expanded_details, group, metric, n) {
   plot
 }
 
-plot_groups_over_time <- function(expanded_details, group, metric, n, feature, remove_outliers, years, plot_type, add_line, label) {
+plot_groups_over_time <- function(expanded_details, group, metric, n, feature, remove_outliers, years, plot_type, add_line, add_curve, agg_metric, sort, label) {
   # create plotting data
-  # filter the years based on the specified year range
+  # filter the data based on the specified year range
   expanded_details <- filter(expanded_details, yearpublished >= years[1], yearpublished <= years[2])
-  plotting_data <- filter_top_n_levels(expanded_details, group, metric, n, feature, remove_outliers, TRUE, FALSE)
+  plotting_data <- filter_top_n_levels(expanded_details, group, metric, n, feature, remove_outliers, TRUE, sort)
   
+  # create one of the two possible plots: scatterplot or heat map
   plot <- ggplot(plotting_data, aes(x = yearpublished)) + theme_bw()
+  # create a scatterplot
+  if (plot_type == "Scatterplot") {
+    plot <- plot + geom_jitter(aes(y = value, color = get(group)), alpha = 0.25, height = 0.5, width = 0.5) +
+      facet_wrap(~get(group)) +
+      theme(axis.title = element_text(size = 16), axis.text = element_text(size = 14), 
+            strip.text = element_text(size = 14), legend.position = "none") +
+      labs(x = "Year Published", y = label)
+    # add a linear regression line
+    if (add_line) { plot <- plot + geom_smooth(aes(x = yearpublished, y = value), method = "lm", se = FALSE, color = "blue") }
+    # add a smooth curve
+    if (add_curve) { plot <- plot + geom_smooth(aes(x = yearpublished, y = value), method = "gam", se = FALSE, color = "red")}
+    if (n >= 15) {
+      plot <- plot + theme(axis.text = element_text(size = 12))
+      if (n >= 20) { plot <- plot + theme(axis.text = element_text(size = 10)) }
+    }
+  }
+  # create a heat map
   if (plot_type == "Heat Map") {
-    plotting_data <- plotting_data %>% group_by(yearpublished, get(group)) %>% summarize(value = mean(value))
+    if (agg_metric == "Mean") { plotting_data <- plotting_data %>% group_by(yearpublished, get(group)) %>% summarize(value = mean(value)) }
+    if (agg_metric == "Median") { plotting_data <- plotting_data %>% group_by(yearpublished, get(group)) %>% summarize(value = median(value)) }
     names(plotting_data) <- c("yearpublished", group, "value")
     plot <- plot + geom_tile(data = plotting_data, aes(y = get(group), fill = value)) +
       coord_fixed() +
@@ -195,24 +216,10 @@ plot_groups_over_time <- function(expanded_details, group, metric, n, feature, r
       if (n >= 45) { plot <- plot + theme(axis.text.y = element_text(size = 10)) }
     }
   }
-  if (plot_type == "Scatterplot") {
-    plot <- plot + geom_jitter(aes(y = value, color = get(group)), alpha = 0.25, height = 0.5, width = 0.5) +
-      facet_wrap(~get(group)) +
-      theme(axis.title = element_text(size = 16), axis.text = element_text(size = 14), 
-            strip.text = element_text(size = 14), legend.position = "none") +
-      labs(x = "Year Published", y = label)
-    if (add_line) {
-      plot <- plot + geom_smooth(aes(x = yearpublished, y = value), method = "lm", se = FALSE, color = "black")
-    }
-    if (n >= 15) {
-      plot <- plot + theme(axis.text = element_text(size = 12))
-      if (n >= 20) { plot <- plot + theme(axis.text = element_text(size = 10)) }
-    }
-  }
   plot
 }
 
-plot_games_over_time <- function(details, feature, remove_outliers, years, plot_type, add_line, year_bin_size, label) {
+plot_games_over_time <- function(details, feature, remove_outliers, years, plot_type, add_line, add_curve, year_bin_size, label) {
   # create plotting data
   if (remove_outliers) { details <- remove_outliers(details, feature) }
   # filter the years based on the specified year range
@@ -225,21 +232,23 @@ plot_games_over_time <- function(details, feature, remove_outliers, years, plot_
       geom_jitter(alpha = 0.25, height = 0.5, width = 0.5) +
       labs(x = "Year Published", y = label)
     # add a linear regression line
-    if (add_line) { plot <- plot + geom_smooth(method = "lm", se = FALSE, color = "red", linewidth = 1.5) }
+    if (add_line) { plot <- plot + geom_smooth(method = "lm", se = FALSE, color = "blue", linewidth = 1.5) }
+    # add a smooth curve
+    if (add_curve) { plot <- plot + geom_smooth(method = "gam", se = FALSE, color = "red", linewidth = 1.5) }
   }
   # create a ridgeline plot
   if (plot_type == "Ridgeline Plot") {
     plotting_data$yearpublished <- plotting_data$yearpublished - plotting_data$yearpublished %% year_bin_size
     plot <- ggplot(plotting_data, aes(y = as.factor(yearpublished), x = get(feature), fill = after_stat(x))) +
-      geom_density_ridges_gradient(scale = 4) +
+      geom_density_ridges_gradient(scale = 3, lwd = 1.25) +
       scale_fill_viridis_c(option = "inferno") +
       labs(x = label, y = "Year Published")
   }
   plot <- plot + theme_bw() + theme(axis.text = element_text(size = 14), axis.title = element_text(size = 16), legend.position = "none")
   if (plot_type == "Ridgeline Plot" & (years[2] - years[1]) / year_bin_size >= 40) {
-    plot <- plot + theme(axis.text.y = element_text(size = 12))
-    if ((years[2] - years[1]) / year_bin_size >= 50) { plot <- plot + theme(axis.text.y = element_text(size = 10)) }
-    if ((years[2] - years[1]) / year_bin_size >= 60) { plot <- plot + theme(axis.text.y = element_text(size = 8)) }
+      plot <- plot + theme(axis.text.y = element_text(size = 12))
+      if ((years[2] - years[1]) / year_bin_size >= 50) { plot <- plot + theme(axis.text.y = element_text(size = 10)) }
+      if ((years[2] - years[1]) / year_bin_size >= 60) { plot <- plot + theme(axis.text.y = element_text(size = 8)) }
   }
   plot
 }

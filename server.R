@@ -134,15 +134,15 @@ function(input, output, session) {
   
   output$groups_over_time <- renderPlot(
     plot_groups_over_time(
-      pick_expanded_details(input$group_5), input$group_5, input$metric_3, input$n_3, find_feature(input$feature_4),
-      as.logical(input$remove_outliers_5), input$years_1, input$plot_type_5, as.logical(input$add_line_1), input$feature_4
+      pick_expanded_details(input$group_5), input$group_5, input$metric_3, input$n_3, find_feature(input$feature_4), as.logical(input$remove_outliers_5), 
+      input$years_1, input$plot_type_5, as.logical(input$add_line_1), as.logical(input$add_curve_1), input$agg_metric, input$sort_2, input$feature_4
     )
   )
 
   output$games_over_time <- renderPlot(
     plot_games_over_time(
-      details, find_feature(input$feature_5), as.logical(input$remove_outliers_6), input$years_2, 
-      input$plot_type_6, as.logical(input$add_line_2), input$year_bin_size_1, input$feature_5
+      details, find_feature(input$feature_5), as.logical(input$remove_outliers_6), input$years_2, input$plot_type_6,
+      as.logical(input$add_line_2), as.logical(input$add_curve_2), input$year_bin_size_1, input$feature_5
     )
   )
 }
