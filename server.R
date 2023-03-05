@@ -40,10 +40,10 @@ function(input, output, session) {
   updateSelectizeInput(session, "game_id", choices = games_list, server = TRUE)
   
   output$popular_games <- renderTable(
-    details %>% select(name, owned) %>% top_n(20, owned) %>% arrange(-owned) %>% rename("Name" = name, "Number Owned" = owned)
+    details %>% select(name, owned) %>% top_n(25, owned) %>% arrange(-owned) %>% rename("Name" = name, "Number Owned" = owned)
   )
   output$highest_rated_popular_games <- renderTable(
-    details %>% filter(owned >= 10000) %>% select(name, average, owned) %>% top_n(20, average) %>% arrange(-average) %>% 
+    details %>% filter(owned >= 10000) %>% select(name, average, owned) %>% top_n(25, average) %>% arrange(-average) %>% 
       rename("Name" = name, "Average Rating" = average, "Number Owned" = owned)
   )
   
@@ -68,12 +68,12 @@ function(input, output, session) {
   output$game_designers <- renderTable(designers %>% filter(id == input$game_id) %>% select(designer) %>% rename("Designers" = designer))
   
   output$all_game_comparison <- renderPlot(
-    plot_single_comparison(details, input$game_id, NA, NA, find_feature(input$feature_1), as.logical(input$remove_outliers_1), input$plot_type_1, input$feature_1)
+    plot_single_comparison(details, input$game_id, find_feature(input$feature_1), as.logical(input$remove_outliers_1), input$plot_type_1, input$feature_1)
   )
   
   output$similar_game_comparison <- renderPlot(
     plot_group_comparison(
-      pick_expanded_details(input$group_1), pick_expanded_column(input$group_1), input$game_id, input$group_1, NA, NA, 
+      pick_expanded_details(input$group_1), pick_expanded_column(input$group_1), input$game_id, input$group_1, NA, NA, NA, 
       find_feature(input$feature_2), as.logical(input$remove_outliers_2), input$plot_type_2, TRUE, input$feature_2
     )
   )
@@ -105,19 +105,22 @@ function(input, output, session) {
       rename(" " = metric)
   )
   output$level_data <- renderPlot(
-    plot_single_comparison(pick_expanded_details(input$group_2), NA, input$group_2, input$level_1, "All", input$remove_outliers_3, input$plot_type_3, "")
+    plot_group_comparison(
+      pick_expanded_details(input$group_2), pick_expanded_column(input$group_2), NA, input$group_2, input$level_1, NA, NA, 
+      "All", as.logical(input$remove_outliers_3), input$plot_type_3, FALSE, "All"
+    )
   )
   output$popular_games_in_level <- renderTable(
-    level_data() %>% top_n(20, owned) %>% arrange(-owned) %>% select(name, average, owned) %>%
+    level_data() %>% top_n(25, owned) %>% arrange(-owned) %>% select(name, average, owned) %>%
       rename("Name" = name, "Average Rating" = average, "Number Owned" = owned)
   )
   output$highest_rated_games_in_level <- renderTable(
-    level_data() %>% top_n(20, average) %>% arrange(-average) %>% select(name, average, owned) %>%
+    level_data() %>% top_n(25, average) %>% arrange(-average) %>% select(name, average, owned) %>%
       rename("Name" = name, "Average Rating" = average, "Number Owned" = owned)
   )
   output$highest_rated_popular_games_in_level <- renderTable(
     level_data() %>% filter(owned >= quantile(level_data()$owned, 0.95)) %>%
-      top_n(20, average) %>% arrange(-average) %>% select(name, average, owned) %>%
+      top_n(25, average) %>% arrange(-average) %>% select(name, average, owned) %>%
       rename("Name" = name, "Average Rating" = average, "Number Owned" = owned)
   )
 
@@ -127,7 +130,7 @@ function(input, output, session) {
 
   output$top_levels_comparison <- renderPlot(
     plot_group_comparison(
-      pick_expanded_details(input$group_4), pick_expanded_column(input$group_4), NA, input$group_4, input$metric_2, input$n_2, 
+      pick_expanded_details(input$group_4), pick_expanded_column(input$group_4), NA, input$group_4, NA, input$metric_2, input$n_2, 
       find_feature(input$feature_3), as.logical(input$remove_outliers_4), input$plot_type_4, as.logical(input$sort_1), input$feature_3
     )
   )

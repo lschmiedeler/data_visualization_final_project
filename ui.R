@@ -33,20 +33,20 @@ fluidPage(
         "Select a Game",
         fluidRow(
           column(
-            3, selectizeInput("game_id", h4("Select a Game"), choices = 100),
+            4, selectizeInput("game_id", h4("Select a Game"), choices = 100),
             em("If the game you want to analyze is not listed, search for it."),
             br(), br(), h5("Selected Game:"), htmlOutput("selected_game_1"),
             htmlOutput("game_image"),
           ),
           column(3, h4("Popular Games"), tableOutput("popular_games")),
-          column(6, h4("Highest Rated Popular Games"), tableOutput("highest_rated_popular_games"))
+          column(5, h4("Highest Rated Popular Games"), tableOutput("highest_rated_popular_games"))
         )
       ),
       tabPanel(
         "View Game Information",
         h4("View Game Information"),
-        tableOutput("game_details"),
-        fluidRow(
+        hr(), tableOutput("game_details"),
+        hr(), fluidRow(
           column(4, tableOutput("game_categories")),
           column(4, tableOutput("game_mechanics")),
           column(4, tableOutput("game_designers"))
@@ -58,10 +58,10 @@ fluidPage(
         sidebarLayout(
           sidebarPanel(
             htmlOutput("selected_game_2"), 
-            div(em("The feature value associated with the selected game is represented by a red dashed line."), style = "color:red"),
+            em("The feature value associated with the selected game is represented by a black dashed line."),
             hr(), radioButtons("feature_1", strong("Select a Feature"), choices = c("All", features)),
             radioButtons("remove_outliers_1", strong("Remove Feature Outliers?"), choices = list("No" = FALSE, "Yes" = TRUE)),
-            radioButtons("plot_type_1", strong("Select a Plot Type"), choices = list("Boxplot", "Density Plot")),
+            radioButtons("plot_type_1", strong("Select a Plot Type"), choices = list("Boxplot", "Histogram", "Density Plot")),
           ),
           mainPanel(plotOutput("all_game_comparison", height = 600))
         )
@@ -87,11 +87,8 @@ fluidPage(
       "Anaylze Groups of Games",
       tabPanel(
         "View and Plot Category, Mechanic, and Designer Information",
-        
-        # plot overall distrbution alongside specific level distribution
-        
         h4("View and Plot Category, Mechanic, and Designer Information"),
-        selectizeInput("group_2", strong("Select a Group"), choices = 3),
+        hr(), selectizeInput("group_2", strong("Select a Group"), choices = 3),
         selectizeInput("level_1", strong("Select a Level"), choices = 100),
         br(),
         hr(),
@@ -101,7 +98,7 @@ fluidPage(
         br(), hr(), h5("Plot Feature Values"),
         fluidRow(
           column(6, radioButtons("remove_outliers_3", strong("Remove Feature Outliers?"), choices = list("No" = FALSE, "Yes" = TRUE))),
-          column(6, radioButtons("plot_type_3", strong("Select a Plot Type"), choices = list("Boxplot", "Density Plot")))
+          column(6, radioButtons("plot_type_3", strong("Select a Plot Type"), choices = list("Boxplot", "Violin Plot", "Density Plot", "Ridgeline Plot")))
         ),
         plotOutput("level_data", height = 600),
         br(), br(), hr(), fluidRow(
@@ -163,8 +160,8 @@ fluidPage(
               "metric_3", strong("Select a Metric to Determine the Top Levels of the Group"), 
               choices = list("Number of Different Games", "Number Owned", "Average Rating"), width = "100%"
             ),
-            sliderInput("n_3", strong("Select a Limit for the Number of Top Levels"), min = 1, max = 25, value = 5, width = "75%"),
-            sliderInput("years_1", strong("Select a Year Range"), min = 1980, max = 2023, value = c(2000, 2020), width = "75%")
+            sliderInput("n_3", strong("Select a Limit for the Number of Top Levels"), min = 1, max = 50, value = 10, width = "75%"),
+            sliderInput("years_1", strong("Select a Year Range"), min = 1950, max = 2023, value = c(2000, 2020), width = "75%")
           ),
           column(
             3,
@@ -174,8 +171,8 @@ fluidPage(
           ),
           column(
             4,
-            radioButtons("add_line_1", strong("Add (Blue) Lines to Scatterplots?"), choices = list("No" = FALSE, "Yes" = TRUE)),
-            radioButtons("add_curve_1", strong("Add (Red) Curves to Scatterplots?"), choices = list("No" = FALSE, "Yes" = TRUE)),
+            radioButtons("add_line_1", strong("Add (Black) Lines to Scatterplots?"), choices = list("No" = FALSE, "Yes" = TRUE)),
+            radioButtons("add_curve_1", strong("Add (Blue) Curves to Scatterplots?"), choices = list("No" = FALSE, "Yes" = TRUE)),
             radioButtons("agg_metric", strong("Select an Aggregation Metric for the Heatmap"), choices = c("Mean", "Median")),
             radioButtons("sort_2", strong("Sort by Median Feature Value?"), choices = list("No" = FALSE, "Yes" = TRUE))
           )
@@ -220,8 +217,8 @@ fluidPage(
           column(
             4,
             radioButtons("plot_type_6", strong("Select a Plot Type"), choices = list("Scatterplot", "Ridgeline Plot")),
-            radioButtons("add_line_2", strong("Add (Blue) Line to Scatterplot?"), choices = list("No" = FALSE, "Yes" = TRUE)),
-            radioButtons("add_curve_2", strong("Add (Red) Curve to Scatterplot?"), choices = list("No" = FALSE, "Yes" = TRUE))
+            radioButtons("add_line_2", strong("Add (Black) Line to Scatterplot?"), choices = list("No" = FALSE, "Yes" = TRUE)),
+            radioButtons("add_curve_2", strong("Add (Blue) Curve to Scatterplot?"), choices = list("No" = FALSE, "Yes" = TRUE))
           )
         ),
         hr(), plotOutput("games_over_time", height = 700)

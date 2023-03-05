@@ -2,9 +2,10 @@ library(tidyverse)
 library(ggridges)
 
 remove_outliers <- function(df, feature) {
-  # remove the data points that are more than 1.5 * IQR away from the 1st and 3rd quartiles for the specified feature
-  filter(df, get(feature) >= quantile(df[[feature]], 0.25) - 1.5 * IQR(df[[feature]]),
-         get(feature) <= quantile(df[[feature]], 0.75) + 1.5 * IQR(df[[feature]]))
+  # remove the data points that are more than 5 * IQR away from the 1st and 3rd quartiles for the specified feature
+  # remove only very extreme values to make the plots easier to analyze
+  filter(df, get(feature) >= quantile(df[[feature]], 0.25) - 5 * IQR(df[[feature]]),
+         get(feature) <= quantile(df[[feature]], 0.75) + 5 * IQR(df[[feature]]))
 }
 
 sort_data_by_median <- function(df, group, feature) {
@@ -65,9 +66,8 @@ filter_top_n_levels <- function(df, group, metric, n, feature, remove_outliers, 
   plotting_data
 }
 
-plot_single_comparison <- function(details, game_id, group, level, feature, remove_outliers, plot_type, x_label) {
+plot_single_comparison <- function(details, game_id, feature, remove_outliers, plot_type, x_label) {
   # create plotting data
-  if (!is.na(level)) { details <- filter(details, get(group) == level) }
   if (feature == "All") { plotting_data <- create_plotting_data(details, NA, remove_outliers) }
   else {
     if (remove_outliers) { details <- remove_outliers(details, feature) }
@@ -77,32 +77,42 @@ plot_single_comparison <- function(details, game_id, group, level, feature, remo
   game_values <- plotting_data %>% filter(id == game_id)
   
   # create one of the two possible plots: boxplot or density plot
-  plot <- ggplot(plotting_data, aes(x = value)) + theme_bw() +
-    theme(axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank())
+  plot <- ggplot(plotting_data, aes(x = value)) + theme_bw() + theme(axis.title.y = element_blank())
+  color <- "#50A45C"
   # create a boxplot
   if (plot_type == "Boxplot") {
-    plot <- plot + geom_boxplot(fill = "black", alpha = 0.25, linewidth = 1.2, fatten = 1, outlier.size = 2.5) +
+    plot <- plot + geom_boxplot(color = color, fill = color, alpha = 0.25, linewidth = 1.2, fatten = 1, outlier.size = 2.5) +
       scale_y_continuous(limits = c(-2, 2))
   }
+  if (plot_type == "Histogram") { plot <- plot + geom_histogram(bins = 25, fill = color, color = color, alpha = 0.5, linewidth = 1.1) }
   # create a density plot
-  if (plot_type == "Density Plot") { 
-    plot <- plot + geom_density(fill = "black", alpha = 0.25, linewidth = 1.2)
+  if (plot_type == "Density Plot") { plot <- plot + geom_density(color = color, fill = color, alpha = 0.25, linewidth = 1.2) }
+  
+  if (plot_type != "Histogram") {
+    plot <- plot + theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
   }
   if (feature == "All") {
     plot <- plot + facet_wrap(~feature, scales = "free") +
       theme(axis.title.x = element_blank(), strip.text = element_text(size = 16))
   }
   if (feature != "All") { plot <- plot + labs(x = x_label) }
+  
   # add the dashed line that represents the feature value associated with the selected game
-  plot + geom_vline(data = game_values, aes(xintercept = value), color = "red", linewidth = 1.2, linetype = "longdash") + 
+  plot + geom_vline(data = game_values, aes(xintercept = value), color = "black", linewidth = 1.2, linetype = "longdash") + 
     theme(axis.text = element_text(size = 14), axis.title = element_text(size = 16))
 }
 
-plot_group_comparison <- function(expanded_details, expanded_column, game_id, group, metric, n,
+plot_group_comparison <- function(expanded_details, expanded_column, game_id, group, level, metric, n,
                                   feature, remove_outliers, plot_type, sort, x_label) {
   # create plotting data
+  # create new levels for the specified group to allow for comparing the games in the specified level with all the games
+  if (is.na(game_id) & !is.na(level)) {
+    expanded_details[[group]] <- ifelse(expanded_details[[group]] == level, level, "All Games")
+    plotting_data <- create_plotting_data(expanded_details, group, remove_outliers)
+    plotting_data[[group]] <- factor(plotting_data[[group]], levels = c("All Games", level))
+  }
   # filter the data so that the only levels of the group remaining are those associated with the specified game
-  if (is.na(n)) { 
+  if (!is.na(game_id) & is.na(n)) { 
     expanded_details <- filter(expanded_details, get(group) %in% (expanded_column %>% filter(id == game_id))[[group]])
     if (feature == "All") { plotting_data <- create_plotting_data(expanded_details, group, remove_outliers) }
     else {
@@ -114,8 +124,8 @@ plot_group_comparison <- function(expanded_details, expanded_column, game_id, gr
     game_values <- plotting_data %>% filter(id == game_id)
   }
   # filter the data so that the only levels of the group remaining are the top n levels
-  else { plotting_data <- filter_top_n_levels(expanded_details, group, metric, n, feature, remove_outliers, FALSE, sort) }
-  
+  if (is.na(game_id) & is.na(level)) { plotting_data <- filter_top_n_levels(expanded_details, group, metric, n, feature, remove_outliers, FALSE, sort) }
+
   # create one of the four possible plots: boxplot, violin plot, density plot, or ridgeline plot
   plot <- ggplot(plotting_data, aes(x = value, color = get(group), fill = get(group))) + theme_bw()
   # create a boxplot
@@ -130,6 +140,7 @@ plot_group_comparison <- function(expanded_details, expanded_column, game_id, gr
   }
   # create a ridgeline plot
   if (plot_type == "Ridgeline Plot") { plot <- plot + geom_density_ridges(aes(y = get(group)), alpha = 0.25, size = 1.2) }
+  
   if (plot_type %in% c("Boxplot", "Violin Plot", "Ridgeline Plot")) { plot <- plot + theme(legend.position = "none", axis.title.y = element_blank()) }
   if (feature == "All") {
     if (plot_type == "Density Plot") { 
@@ -140,31 +151,37 @@ plot_group_comparison <- function(expanded_details, expanded_column, game_id, gr
     plot <- plot + theme(axis.title.x = element_blank(), strip.text = element_text(size = 16))
   }
   if (plot_type != "Density Plot") { plot <- plot + scale_y_discrete(limits = rev) }
+  
   # add the dashed line that represents the feature value associated with the selected game
-  if (is.na(n)) { plot <- plot + geom_vline(data = game_values, aes(xintercept = value), color = "black", linewidth = 1.2, linetype = "longdash") }
+  if (is.na(n) & is.na(level)) { plot <- plot + geom_vline(data = game_values, aes(xintercept = value), color = "black", linewidth = 1.2, linetype = "longdash") }
+  
   if (!(is.na(n)) & n >= 40) {
     plot <- plot + theme(axis.text.y = element_text(size = 12))
     if (n >= 45) { plot <- plot + theme(axis.text.y = element_text(size = 10)) }
   }
+  
   plot + labs(x = x_label, color = str_to_title(group), fill = str_to_title(group)) +
-    theme(axis.title = element_text(size = 16), axis.text = element_text(size = 14))
+    theme(axis.title = element_text(size = 16), axis.text = element_text(size = 14)) +
+    scale_fill_manual(values = wesanderson::wes_palette("Darjeeling1", n = length(unique(plotting_data[[group]])), type = "continuous")) +
+    scale_color_manual(values = wesanderson::wes_palette("Darjeeling1", n = length(unique(plotting_data[[group]])), type = "continuous"))
 }
 
 plot_top_bar_chart <- function(expanded_details, group, metric, n) {
   # create plotting data
   # remove the observations that have no designer
   if (group == "designer") { expanded_details <- filter(expanded_details, designer != "(Uncredited)") }
-  # find the top levels in the specified group according to the specified metric
+  # find the top n levels in the specified group according to the specified metric
   plotting_data <- find_top_n_levels(expanded_details, group, metric, n)
   
   # create a bar plot
-  plot <- ggplot(plotting_data, aes(x = get(group), y = value)) +
+  plot <- ggplot(plotting_data, aes(x = get(group), y = value, fill = get(group))) +
     geom_bar(stat = "identity") +
     coord_flip() +
     scale_x_discrete(limits = rev) + 
+    scale_fill_manual(values = wesanderson::wes_palette("Darjeeling1", n = n, type = "continuous")) + 
     labs(y = metric) +
     theme_bw() +
-    theme(axis.title.y = element_blank(), axis.text = element_text(size = 14), axis.title = element_text(size = 16))
+    theme(axis.title.y = element_blank(), axis.text = element_text(size = 14), axis.title = element_text(size = 16), legend.position = "none")
   if (metric == "Average Rating" & group %in% c("category", "designer")) { plot <- plot + scale_y_continuous(limits = c(0, 10.25)) }
   if (metric == "Number Owned") { plot <- plot + scale_y_continuous(labels = scales::comma) }
   if (metric == "Number Owned" & group == "mechanic") { plot <- plot + scale_y_continuous(limits = c(0, 12500000), labels = scales::comma) }
@@ -189,14 +206,16 @@ plot_groups_over_time <- function(expanded_details, group, metric, n, feature, r
       facet_wrap(~get(group)) +
       theme(axis.title = element_text(size = 16), axis.text = element_text(size = 14), 
             strip.text = element_text(size = 14), legend.position = "none") +
-      labs(x = "Year Published", y = label)
+      labs(x = "Year Published", y = label) + 
+      scale_color_manual(values = wesanderson::wes_palette("Darjeeling1", n = n, type = "continuous"))
     # add a linear regression line
-    if (add_line) { plot <- plot + geom_smooth(aes(x = yearpublished, y = value), method = "lm", se = FALSE, color = "blue") }
+    if (add_line) { plot <- plot + geom_smooth(aes(x = yearpublished, y = value), method = "lm", se = FALSE, color = "black") }
     # add a smooth curve
-    if (add_curve) { plot <- plot + geom_smooth(aes(x = yearpublished, y = value), method = "gam", se = FALSE, color = "red")}
-    if (n >= 15) {
+    if (add_curve) { plot <- plot + geom_smooth(aes(x = yearpublished, y = value), method = "gam", se = FALSE, color = "blue") }
+    if (n >= 20) {
       plot <- plot + theme(axis.text = element_text(size = 12))
-      if (n >= 20) { plot <- plot + theme(axis.text = element_text(size = 10)) }
+      if (n >= 30) { plot <- plot + theme(axis.text = element_text(size = 10)) }
+      if (n >= 40) { plot <- plot + theme(axis.text = element_text(size = 10)) }
     }
   }
   # create a heat map
@@ -207,7 +226,7 @@ plot_groups_over_time <- function(expanded_details, group, metric, n, feature, r
     plot <- plot + geom_tile(data = plotting_data, aes(y = get(group), fill = value)) +
       coord_fixed() +
       scale_y_discrete(limits = rev) + 
-      scale_fill_viridis_c(option = "inferno") +
+      scale_fill_gradientn(colors = wesanderson::wes_palette("Zissou1", 100, type = "continuous")) + 
       labs(x = "Year Published", fill = label) +
       theme(axis.title.x = element_text(size = 16), axis.text = element_text(size = 14), axis.title.y = element_blank(),
             legend.position = "top", legend.title = element_text(size = 16), legend.text = element_text(size = 14), legend.key.width = unit(2, "cm"))
@@ -231,19 +250,20 @@ plot_games_over_time <- function(details, feature, remove_outliers, years, plot_
     plot <- ggplot(plotting_data, aes(x = yearpublished, y = get(feature))) +
       geom_jitter(alpha = 0.25, height = 0.5, width = 0.5) +
       labs(x = "Year Published", y = label)
-    # add a linear regression line
-    if (add_line) { plot <- plot + geom_smooth(method = "lm", se = FALSE, color = "blue", linewidth = 1.5) }
     # add a smooth curve
-    if (add_curve) { plot <- plot + geom_smooth(method = "gam", se = FALSE, color = "red", linewidth = 1.5) }
+    if (add_line) { plot <- plot + geom_smooth(method = "lm", se = FALSE, color = "black", linewidth = 1.5) }
+    # add a smooth curve
+    if (add_curve) { plot <- plot + geom_smooth(method = "gam", se = FALSE, color = "blue", linewidth = 1.5) }
   }
   # create a ridgeline plot
   if (plot_type == "Ridgeline Plot") {
     plotting_data$yearpublished <- plotting_data$yearpublished - plotting_data$yearpublished %% year_bin_size
     plot <- ggplot(plotting_data, aes(y = as.factor(yearpublished), x = get(feature), fill = after_stat(x))) +
       geom_density_ridges_gradient(scale = 3, lwd = 1.25) +
-      scale_fill_viridis_c(option = "inferno") +
+      scale_fill_gradientn(colors = wesanderson::wes_palette("Zissou1", 100, type = "continuous")) + 
       labs(x = label, y = "Year Published")
   }
+  
   plot <- plot + theme_bw() + theme(axis.text = element_text(size = 14), axis.title = element_text(size = 16), legend.position = "none")
   if (plot_type == "Ridgeline Plot" & (years[2] - years[1]) / year_bin_size >= 40) {
       plot <- plot + theme(axis.text.y = element_text(size = 12))
