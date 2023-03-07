@@ -24,6 +24,8 @@ details <- df %>% select(id, primary, image, description, yearpublished,
   mutate(description = str_trim(str_replace_all(description, "&#10;", "<br>"))) %>%
   mutate(description = str_replace_all(description, "(<br>)(<br>)+", "<br><br>")) %>%
   mutate(description = str_replace_all(description, "(<br>)+$", ""))
+# replace 0s (missing values) with NAs
+details[details == 0] <- NA
 
 # create three expanded dataframes: categories, mechanics, and designers
 categories <- create_expanded_df(df, "boardgamecategory", c("id", "category"))

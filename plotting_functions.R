@@ -8,7 +8,8 @@ titles <- c("Average Rating", "Average Complexity", "Number Owned", "Year Publis
 # remove only very extreme values to make the plots easier to analyze
 remove_extreme_values <- function(df, feature) {
   if (feature %in% c("yearpublished", "owned", "maxplayers", "minplaytime", "maxplaytime")) {
-    return(filter(df, get(feature) >= quantile(df[[feature]], 0.25) - 5 * IQR(df[[feature]]), get(feature) <= quantile(df[[feature]], 0.75) + 5 * IQR(df[[feature]])))
+    return(filter(df, get(feature) >= quantile(df[[feature]], 0.25, na.rm = TRUE) - 5 * IQR(df[[feature]], na.rm = TRUE), 
+                  get(feature) <= quantile(df[[feature]], 0.75, na.rm = TRUE) + 5 * IQR(df[[feature]], na.rm = TRUE)))
   }
   else { return(df) }
 }
@@ -209,7 +210,8 @@ plot_groups_over_time <- function(expanded_details, group, metric, n, feature, r
       facet_wrap(~get(group)) +
       theme(axis.title = element_text(size = 14), axis.text = element_text(size = 12), strip.text = element_text(size = 14), legend.position = "none") +
       labs(x = "Year Published", y = label) + 
-      scale_color_manual(values = wesanderson::wes_palette("Darjeeling1", n = n, type = "continuous"))
+      scale_color_manual(values = wesanderson::wes_palette("Darjeeling1", n = n, type = "continuous")) +
+      scale_y_continuous(labels = scales::comma, breaks = scales::pretty_breaks())
     # add a linear regression line
     if (add_line) { plot <- plot + geom_smooth(aes(x = yearpublished, y = value), method = "lm", se = FALSE, color = "black") }
     # add a smooth curve
@@ -232,7 +234,7 @@ plot_groups_over_time <- function(expanded_details, group, metric, n, feature, r
             legend.position = "top", legend.title = element_text(size = 14), legend.text = element_text(size = 12), legend.key.width = unit(2, "cm"))
     if (n >= 40) { plot <- plot + theme(axis.text.y = element_text(size = 10)) }
   }
-  plot
+  plot 
 }
 
 plot_games_over_time <- function(details, feature, remove_extreme_values, years, plot_type, add_line, add_curve, year_bin_size, label) {
@@ -247,7 +249,8 @@ plot_games_over_time <- function(details, feature, remove_extreme_values, years,
   if (plot_type == "Scatterplot") {
     plot <- ggplot(plotting_data, aes(x = yearpublished, y = get(feature))) +
       geom_jitter(alpha = 0.25, height = 0.5, width = 0.5) +
-      labs(x = "Year Published", y = label)
+      labs(x = "Year Published", y = label) + 
+      scale_y_continuous(labels = scales::comma, breaks = scales::pretty_breaks())
     # add a smooth curve
     if (add_line) { plot <- plot + geom_smooth(method = "lm", se = FALSE, color = "black", linewidth = 1.5) }
     # add a smooth curve
@@ -259,7 +262,8 @@ plot_games_over_time <- function(details, feature, remove_extreme_values, years,
     plot <- ggplot(plotting_data, aes(y = as.factor(yearpublished), x = get(feature), fill = after_stat(x))) +
       geom_density_ridges_gradient(scale = 3, lwd = 1.25) +
       scale_fill_gradientn(colors = wesanderson::wes_palette("Zissou1", 100, type = "continuous")) + 
-      labs(x = label, y = "Year Published")
+      labs(x = label, y = "Year Published") + 
+      scale_x_continuous(labels = scales::comma, breaks = scales::pretty_breaks())
   }
   
   plot <- plot + theme_bw() + theme(axis.text = element_text(size = 12), axis.title = element_text(size = 14), legend.position = "none")
@@ -267,5 +271,5 @@ plot_games_over_time <- function(details, feature, remove_extreme_values, years,
       plot <- plot + theme(axis.text.y = element_text(size = 10))
       if ((years[2] - years[1]) / year_bin_size >= 60) { plot <- plot + theme(axis.text.y = element_text(size = 8)) }
   }
-  plot
+  plot 
 }
