@@ -10,14 +10,15 @@ designers <- read.csv("data/designers.csv")
 details_and_designers <- merge(details, designers)
 
 dfs <- list(details, details_and_categories, details_and_mechanics, details_and_designers)
-features <- c("average", "averageweight", "owned", "playingtime", "minage", "yearpublished")
+features <- c("average", "averageweight", "owned",  "yearpublished",
+              "minplayers", "maxplayers", "minplaytime", "maxplaytime", "minage")
 
 prop_remaining <- data.frame(df = c(), feature = c(), prop_remaining = c())
 
 for (i in 1:length(dfs)) {
   df <- data.frame(dfs[i])
   for (feature in features) {
-    prop <- nrow(remove_outliers(df, feature)) / nrow(df)
+    prop <- nrow(remove_extreme_values(df, feature)) / nrow(df)
     prop_remaining <- rbind(prop_remaining, data.frame(df = c(i),
                                                        feature = c(feature),
                                                        prop_remaining = c(prop)))

@@ -16,9 +16,14 @@ create_expanded_df <- function(df, column_name, expanded_df_names) {
 df <- read.csv("data/games_detailed_info.csv", row.names = 1)
 
 # create a details dataframe that contains a subset of the columns in df
-details <- df %>% select(id, primary, image, yearpublished, playingtime, minage, average, owned, averageweight) %>%
+details <- df %>% select(id, primary, image, description, yearpublished, 
+                         minplayers, maxplayers, minplaytime, maxplaytime, 
+                         minage, average, owned, averageweight) %>%
   mutate(primary = as.factor(primary)) %>%
-  rename(name = primary)
+  rename(name = primary) %>%
+  mutate(description = str_trim(str_replace_all(description, "&#10;", "<br>"))) %>%
+  mutate(description = str_replace_all(description, "(<br>)(<br>)+", "<br><br>")) %>%
+  mutate(description = str_replace_all(description, "(<br>)+$", ""))
 
 # create three expanded dataframes: categories, mechanics, and designers
 categories <- create_expanded_df(df, "boardgamecategory", c("id", "category"))

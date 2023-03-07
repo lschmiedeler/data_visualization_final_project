@@ -1,7 +1,9 @@
 library(shiny)
 library(bslib)
 
-features <- sort(c("Average Rating", "Average Complexity", "Number Owned", "Playing Time", "Minimum Age", "Year Published"))
+features <- c("Average Rating", "Average Complexity", "Number Owned",
+              "Year Published", "Minimum Number of Players", "Maximum Number of Players",
+              "Minimum Playing Time", "Maximum Playing Time", "Minimum Age")
 
 fluidPage(
   navbarPage(
@@ -13,15 +15,20 @@ fluidPage(
       HTML("<em>All of the data used to create this application comes from the <b>BoardGameGeek Reviews</b> dataset on Kaggle.</em>"),
       br(), br(),
       HTML("The <b>games_detailed_info.csv</b> file in this dataset contains information about 21,631 board games.
-           The following 10 features are a subset of the features in this file and are used in this dashboard:
+           The following 15 features are a subset of the features in this file and are used in this dashboard:
            <ul>
-           <li> <b>Name:</b> name of the board game </li>
-           <li> <b>Year Published:</b> year of the board game's publication </li>
-           <li> <b>Playing Time:</b> average playing time in minutes</li>
-           <li> <b>Minimum Age:</b> recommended minimum age for playing the game </li>
-           <li> <b>Average Rating:</b> average user rating (from 0 to 10) </li>
-           <li> <b>Average Complexity:</b> average user complexity rating (measures how difficult the game is to understand on a scale from 0 to 5) </li> 
+           <li> <b>Name:</b> the name of the board game </li>
+           <li> <b>Image:</b> an image of the board game </li>
+           <li> <b>Description:</b> a description of the board game</li>
+           <li> <b>Average Rating:</b> the average user rating (from 0 to 10) </li>
+           <li> <b>Average Complexity:</b> the average user complexity rating (measures how difficult the game is to understand on a scale from 0 to 5) </li> 
            <li> <b>Number Owned:</b> the number of BoardGameGeek users who own the game </li>
+           <li> <b>Year Published:</b> the year of the board game's publication </li>
+           <li> <b>Minimum Number of Players:</b> the minimum number of players that can play the game</li>
+           <li> <b>Maximum Number of Players:</b> the maximum number of players that can play the game</li>
+           <li> <b>Minimum Playing Time:</b> the minimum playing time of the game (in minutes) </li>
+           <li> <b>Maximum Playing Time:</b> the maximum playing time of the game (in minutes) </li>
+           <li> <b>Minimum Age:</b> the recommended minimum age for playing the game </li>
            <li> <b>Categories:</b> the categories to which the game belongs </li>
            <li> <b>Mechanics:</b> the mechanics employed by the game </li>
            <li> <b>Designers:</b> the designers of the game </li>
@@ -33,10 +40,8 @@ fluidPage(
         "Select a Game",
         fluidRow(
           column(
-            4, selectizeInput("game_id", h4("Select a Game"), choices = 100),
-            em("If the game you want to analyze is not listed, search for it."),
-            br(), br(), h5("Selected Game:"), htmlOutput("selected_game_1"),
-            htmlOutput("game_image"),
+            4, selectizeInput("game_id", h4("Select a Game"), choices = NULL),
+            h5("Selected Game"), htmlOutput("selected_game_1"), htmlOutput("game_image")
           ),
           column(3, h4("Popular Games"), tableOutput("popular_games")),
           column(5, h4("Highest Rated Popular Games"), tableOutput("highest_rated_popular_games"))
@@ -45,11 +50,16 @@ fluidPage(
       tabPanel(
         "View Game Information",
         h4("View Game Information"),
-        hr(), tableOutput("game_details"),
+        hr(), h5("Selected Game"), htmlOutput("selected_game_2"),
+        hr(), h5("Description"), htmlOutput("selected_game_description"),
         hr(), fluidRow(
-          column(4, tableOutput("game_categories")),
-          column(4, tableOutput("game_mechanics")),
-          column(4, tableOutput("game_designers"))
+          column(
+            6, h5("Feature Values"), tableOutput("game_details_float"), tableOutput("game_details_int")
+          ),
+          column(
+            6, h5("Categories, Mechanics, and Designers"), tableOutput("game_categories"),
+            tableOutput("game_mechanics"), tableOutput("game_designers")
+          )
         )
       ),
       tabPanel(
@@ -57,13 +67,13 @@ fluidPage(
         h4("Compare Game to All Games"),
         sidebarLayout(
           sidebarPanel(
-            htmlOutput("selected_game_2"), 
+            htmlOutput("selected_game_3"), 
             em("The feature value associated with the selected game is represented by a black dashed line."),
-            hr(), radioButtons("feature_1", strong("Select a Feature"), choices = c("All", features)),
-            radioButtons("remove_outliers_1", strong("Remove Feature Outliers?"), choices = list("No" = FALSE, "Yes" = TRUE)),
+            hr(), selectizeInput("feature_1", strong("Select Features"), choices = NULL, multiple = TRUE),
+            radioButtons("remove_extreme_values_1", strong("Remove Feature Outliers?"), choices = list("No" = FALSE, "Yes" = TRUE)),
             radioButtons("plot_type_1", strong("Select a Plot Type"), choices = list("Boxplot", "Histogram", "Density Plot")),
           ),
-          mainPanel(plotOutput("all_game_comparison", height = 600))
+          mainPanel(plotOutput("all_game_comparison", height = 700))
         )
       ),
       tabPanel(
@@ -71,15 +81,15 @@ fluidPage(
         h4("Compare Game to Similar Games"),
         sidebarLayout(
           sidebarPanel(
-            htmlOutput("selected_game_3"), 
+            htmlOutput("selected_game_4"), 
             em("The feature value associated with the selected game is represented by a black dashed line."),
             hr(),
             radioButtons("group_1", strong("Filter by"), choices = list("Category" = "category", "Mechanic" = "mechanic")),
-            radioButtons("feature_2", strong("Select a Feature"), choices = c("All", features)),
-            radioButtons("remove_outliers_2", strong("Remove Feature Outliers?"), choices = list("No" = FALSE, "Yes" = TRUE)),
+            selectizeInput("feature_2", strong("Select Features"), choices = NULL, multiple = TRUE),
+            radioButtons("remove_extreme_values_2", strong("Remove Feature Outliers?"), choices = list("No" = FALSE, "Yes" = TRUE)),
             radioButtons("plot_type_2", strong("Select a Plot Type"), choices = list("Boxplot", "Violin Plot", "Density Plot", "Ridgeline Plot")),
           ),
-          mainPanel(plotOutput("similar_game_comparison", height = 700))
+          mainPanel(plotOutput("similar_game_comparison", height = 850))
         )
       )
     ),
@@ -90,17 +100,18 @@ fluidPage(
         h4("View and Plot Category, Mechanic, and Designer Information"),
         hr(), selectizeInput("group_2", strong("Select a Group"), choices = 3),
         selectizeInput("level_1", strong("Select a Level"), choices = 100),
-        br(),
-        hr(),
-        h5("Summarize Feature Values"),
         htmlOutput("number_of_games"),
-        tableOutput("feature_summary"),
         br(), hr(), h5("Plot Feature Values"),
-        fluidRow(
-          column(6, radioButtons("remove_outliers_3", strong("Remove Feature Outliers?"), choices = list("No" = FALSE, "Yes" = TRUE))),
-          column(6, radioButtons("plot_type_3", strong("Select a Plot Type"), choices = list("Boxplot", "Violin Plot", "Density Plot", "Ridgeline Plot")))
+        sidebarLayout(
+          sidebarPanel(
+            selectizeInput("feature_3", strong("Select Features"), choices = NULL, multiple = TRUE),
+            radioButtons("remove_extreme_values_3", strong("Remove Feature Outliers?"), choices = list("No" = FALSE, "Yes" = TRUE)),
+            radioButtons("plot_type_3", strong("Select a Plot Type"), choices = list("Boxplot", "Violin Plot", "Density Plot", "Ridgeline Plot"))
+          ),
+          mainPanel(
+            plotOutput("level_data", height = 700)
+          )
         ),
-        plotOutput("level_data", height = 600),
         br(), br(), hr(), fluidRow(
           column(4, h5("Popular Games"), tableOutput("popular_games_in_level")),
           column(4, h5("Highest Rated Games"), tableOutput("highest_rated_games_in_level")),
@@ -138,8 +149,8 @@ fluidPage(
           ),
           column(
             3,
-            radioButtons("feature_3", strong("Select a Feature"), choices = features),
-            radioButtons("remove_outliers_4", strong("Remove Feature Outliers?"), choices = list("No" = FALSE, "Yes" = TRUE))
+            radioButtons("feature_4", strong("Select a Feature"), choices = features),
+            radioButtons("remove_extreme_values_4", strong("Remove Feature Outliers?"), choices = list("No" = FALSE, "Yes" = TRUE))
           ),
           column(
             3,
@@ -147,7 +158,7 @@ fluidPage(
             radioButtons("sort_1", strong("Sort by Median Feature Value?"), choices = list("No" = FALSE, "Yes" = TRUE))
           )
         ),
-        hr(), plotOutput("top_levels_comparison", height = 700)
+        hr(), plotOutput("top_levels_comparison", height = 750)
       ),
       tabPanel(
         "Plot Top Categories and Mechanics Over Time",
@@ -165,8 +176,8 @@ fluidPage(
           ),
           column(
             3,
-            radioButtons("feature_4", strong("Select a Feature"), choices = features[features != "Year Published"]),
-            radioButtons("remove_outliers_5", strong("Remove Feature Outliers?"), choices = list("No" = FALSE, "Yes" = TRUE)),
+            radioButtons("feature_5", strong("Select a Feature"), choices = features[features != "Year Published"]),
+            radioButtons("remove_extreme_values_5", strong("Remove Feature Outliers?"), choices = list("No" = FALSE, "Yes" = TRUE)),
             radioButtons("plot_type_5", strong("Select a Plot Type"), choices = list("Scatterplot", "Heat Map")),
           ),
           column(
@@ -177,7 +188,7 @@ fluidPage(
             radioButtons("sort_2", strong("Sort by Median Feature Value?"), choices = list("No" = FALSE, "Yes" = TRUE))
           )
         ),
-        hr(), plotOutput("groups_over_time", height = 700)
+        hr(), plotOutput("groups_over_time", height = 750)
       )
     ),
     navbarMenu(
@@ -199,6 +210,7 @@ fluidPage(
         # data table
         # filter on feature values and display result
         # ability to then sort on a feature and reverse sort
+        # select how many rows are shown
       ),
       tabPanel(
         "Plot Games Over Time",
@@ -206,8 +218,8 @@ fluidPage(
         hr(), fluidRow(
           column(
             3,
-            radioButtons("feature_5", strong("Select a Feature"), choices = features),
-            radioButtons("remove_outliers_6", strong("Remove Feature Outliers?"), choices = list("No" = FALSE, "Yes" = TRUE))
+            radioButtons("feature_6", strong("Select a Feature"), choices = features),
+            radioButtons("remove_extreme_values_6", strong("Remove Feature Outliers?"), choices = list("No" = FALSE, "Yes" = TRUE))
           ),
           column(
             5,
@@ -221,7 +233,7 @@ fluidPage(
             radioButtons("add_curve_2", strong("Add (Blue) Curve to Scatterplot?"), choices = list("No" = FALSE, "Yes" = TRUE))
           )
         ),
-        hr(), plotOutput("games_over_time", height = 700)
+        hr(), plotOutput("games_over_time", height = 750)
       )
     )
   )
