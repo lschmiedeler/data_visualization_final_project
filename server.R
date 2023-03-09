@@ -137,7 +137,7 @@ function(input, output, session) {
   levels <- reactive({
     if (group() == "category") { return(sort(unique(categories$category))) }
     if (group() == "mechanic") { return(sort(unique(mechanics$mechanic))) }
-    if (group() == "designer") { return(sort(unique(designers$designer))) }
+    if (group() == "designer") { return(sort(unique(designers$designer[designers$designer != "(Uncredited)"]))) }
   })
   observe({ updateSelectizeInput(session, "level_1", choices = levels(), server = TRUE) })
   level <- reactive({ input$level_1 })
@@ -208,7 +208,7 @@ function(input, output, session) {
 
   filtered_games <- reactive({
     df <- details
-    features <- as.character(lapply(features, find_feature))
+    features <- as.character(lapply(labels, find_feature))
     ranges <- list(input$rating_range, input$complexity_range, input$owned_range, input$year_range, input$minplayers_range, 
                    input$maxplayers_range, input$minplay_range, input$maxplay_range, input$minage_range)
     dfs <- lapply(1:length(features), function(x) { filter_feature(df, features[x], ranges[[x]]) }) %>% reduce(inner_join)

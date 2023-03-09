@@ -1,8 +1,9 @@
 library(tidyverse)
 library(ggridges)
 
-features <- c("average", "averageweight", "owned", "yearpublished", "minplayers", "maxplayers", "minplaytime", "maxplaytime", "minage")
-titles <- c("Average Rating", "Average Complexity", "Number Owned", "Year Published", "Minimum Number of Players", "Maximum Number of Players", "Minimum Playing Time", "Maximum Playing Time", "Minimum Age")
+level_order <- c("Average Rating", "Average Complexity", "Number Owned", "Year Published",
+                 "Minimum Number of Players", "Maximum Number of Players", 
+                 "Minimum Playing Time", "Maximum Playing Time", "Minimum Age")
 
 # remove the data points that are more than 5 * IQR away from the 1st and 3rd quartiles for the specified feature
 # remove only very extreme values to make the plots easier to analyze
@@ -16,7 +17,8 @@ remove_extreme_values <- function(df, feature) {
 
 # convert the specified group into a factor where the order of the levels is determined by the median feature values for each level
 sort_data_by_median <- function(df, group, feature) {
-  correct_order <- df %>% group_by(get(group)) %>% summarize(median = median(get(feature))) %>% arrange(-median)
+  correct_order <- df %>% group_by(get(group)) %>% summarize(median = median(get(feature), na.rm = TRUE)) %>% arrange(-median)
+  print(correct_order)
   names(correct_order) <- c(group, "median")
   df[[group]] <- factor(df[[group]], levels = correct_order[[group]])
   df
@@ -52,8 +54,7 @@ create_plotting_data <- function(df, group, features, remove_extreme_values) {
 find_top_n_levels <- function(df, group, metric, n) {
   df <- group_by(df, get(group))
   if (metric == "Number of Different Games") { df <- summarize(df, value = n()) }
-  if (metric == "Number Owned") { df <- summarize(df, value = sum(owned)) }
-  if (metric == "Average Rating") { df <- summarize(df, value = mean(average)) }
+  if (metric == "Total Number Owned") { df <- summarize(df, value = sum(owned, na.rm = TRUE)) }
   df <- top_n(df, n, value) %>% arrange(-value)
   names(df) <- c(group, "value")
   df[[group]] <- factor(df[[group]], levels = df[[group]])
@@ -77,6 +78,7 @@ filter_top_n_levels <- function(df, group, metric, n, feature, remove_extreme_va
     names(plotting_data) <- c("id", "name", group, "value")
   }
   if (sort) { plotting_data <- sort_data_by_median(plotting_data, group, "value") }
+  # print(plotting_data)
   plotting_data
 }
 
@@ -95,7 +97,7 @@ plot_single_comparison <- function(details, game_id, feature, remove_extreme_val
   plot <- ggplot(plotting_data, aes(x = value)) + theme_bw() + theme(axis.title.y = element_blank())
   color <- wesanderson::wes_palette("Darjeeling1", n = 5)[2]
   # create a boxplot
-  if (plot_type == "Boxplot") { plot <- plot + geom_boxplot(color = color, fill = color, alpha = 0.25, linewidth = 1.2, fatten = 1, outlier.size = 2.5) + scale_y_continuous(limits = c(-2, 2)) }
+  if (plot_type == "Boxplot") { plot <- plot + geom_boxplot(color = color, fill = color, alpha = 0.5, linewidth = 1.2, fatten = 1, outlier.size = 2.5) + scale_y_continuous(limits = c(-2, 2)) }
   # create a histogram
   if (plot_type == "Histogram") { plot <- plot + geom_histogram(bins = 25, fill = color, color = color, alpha = 0.5, linewidth = 1.1) }
   # create a density plot
@@ -103,7 +105,7 @@ plot_single_comparison <- function(details, game_id, feature, remove_extreme_val
   
   if (plot_type != "Histogram") { plot <- plot + theme(axis.text.y = element_blank(), axis.ticks.y = element_blank()) }
   if (length(feature) > 1) {
-    plot <- plot + facet_wrap(~factor(feature, levels = titles), scales = "free", nrow = 3) + theme(axis.title.x = element_blank(), strip.text = element_text(size = 14))
+    plot <- plot + facet_wrap(~factor(feature, levels = level_order), scales = "free", nrow = 3) + theme(axis.title.x = element_blank(), strip.text = element_text(size = 14))
   }
   if (length(feature) == 1) { plot <- plot + labs(x = x_label) }
   # add the dashed line that represents the feature value associated with the selected game
@@ -140,9 +142,9 @@ plot_group_comparison <- function(expanded_details, expanded_column, game_id, gr
   # create one of the four possible plots: boxplot, violin plot, density plot, or ridgeline plot
   plot <- ggplot(plotting_data, aes(x = value, color = get(group), fill = get(group))) + theme_bw()
   # create a boxplot
-  if (plot_type == "Boxplot") { plot <- plot + geom_boxplot(aes(y = get(group)), alpha = 0.25, linewidth = 1.2, fatten = 1, outlier.size = 2.5) }
+  if (plot_type == "Boxplot") { plot <- plot + geom_boxplot(aes(y = get(group)), alpha = 0.5, linewidth = 1.2, fatten = 1, outlier.size = 2.5) }
   # create a violin plot
-  if (plot_type == "Violin Plot") { plot <- plot + geom_violin(aes(y = get(group)), alpha = 0.25, linewidth = 1.2) }
+  if (plot_type == "Violin Plot") { plot <- plot + geom_violin(aes(y = get(group)), alpha = 0.5, linewidth = 1.2) }
   # create a density plot
   if (plot_type == "Density Plot") {
     plot <- plot + geom_density(alpha = 0.25, linewidth = 1.2) + 
@@ -155,10 +157,10 @@ plot_group_comparison <- function(expanded_details, expanded_column, game_id, gr
   if (plot_type %in% c("Boxplot", "Violin Plot", "Ridgeline Plot")) { plot <- plot + theme(legend.position = "none", axis.title.y = element_blank()) }
   if (length(feature) > 1) {
     if (plot_type == "Density Plot") { 
-      plot <- plot + facet_wrap(~factor(feature, levels = titles), scales = "free", nrow = 3) + 
+      plot <- plot + facet_wrap(~factor(feature, levels = level_order), scales = "free", nrow = 3) + 
         theme(axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank())
     }
-    else { plot <- plot + facet_wrap(~factor(feature, levels = titles), scales = "free_x", nrow = 3) } 
+    else { plot <- plot + facet_wrap(~factor(feature, levels = level_order), scales = "free_x", nrow = 3) } 
     plot <- plot + theme(axis.title.x = element_blank(), strip.text = element_text(size = 14))
   }
   if (plot_type != "Density Plot") { plot <- plot + scale_y_discrete(limits = rev) }
@@ -190,8 +192,7 @@ plot_top_bar_chart <- function(expanded_details, group, metric, n) {
     labs(y = metric) + theme_bw() +
     theme(axis.title.y = element_blank(), axis.text = element_text(size = 12), axis.title = element_text(size = 14), legend.position = "none")
   
-  if (metric == "Average Rating" & group != 'mechanic') { plot <- plot + scale_y_continuous(limits = c(0, 10.25), labels = scales::comma, breaks = scales::pretty_breaks()) }
-  if (metric == "Number Owned" & group == "mechanic") { plot <- plot + scale_y_continuous(limits = c(0, 12500000), labels = scales::comma, breaks = scales::pretty_breaks()) }
+  if (group == "mechanic" & metric == "Total Number Owned") { plot <- plot + scale_y_continuous(limits = c(0, 12500000), labels = scales::comma, breaks = scales::pretty_breaks())}
   if (n >= 40) { plot <- plot + theme(axis.text.y = element_text(size = 10)) }
   plot
 }
@@ -206,7 +207,7 @@ plot_groups_over_time <- function(expanded_details, group, metric, n, feature, r
   plot <- ggplot(plotting_data, aes(x = yearpublished)) + theme_bw()
   # create a scatterplot
   if (plot_type == "Scatterplot") {
-    plot <- plot + geom_jitter(aes(y = value, color = get(group)), alpha = 0.25, height = 0.5, width = 0.5) +
+    plot <- plot + geom_jitter(aes(y = value, color = get(group)), alpha = 0.5, height = 0.5, width = 0.5) +
       facet_wrap(~get(group)) +
       theme(axis.title = element_text(size = 14), axis.text = element_text(size = 12), strip.text = element_text(size = 14), legend.position = "none") +
       labs(x = "Year Published", y = label) + 
@@ -216,14 +217,12 @@ plot_groups_over_time <- function(expanded_details, group, metric, n, feature, r
     if (add_line) { plot <- plot + geom_smooth(aes(x = yearpublished, y = value), method = "lm", se = FALSE, color = "black") }
     # add a smooth curve
     if (add_curve) { plot <- plot + geom_smooth(aes(x = yearpublished, y = value), method = "gam", se = FALSE, color = "blue") }
-    if (n >= 30) {
-      if (n >= 40) { plot <- plot + theme(axis.text = element_text(size = 10)) }
-    }
+    if (n >= 30) { plot <- plot + theme(axis.text = element_text(size = 10)) }
   }
   # create a heat map
   if (plot_type == "Heat Map") {
-    if (agg_metric == "Mean") { plotting_data <- plotting_data %>% group_by(yearpublished, get(group)) %>% summarize(value = mean(value)) }
-    if (agg_metric == "Median") { plotting_data <- plotting_data %>% group_by(yearpublished, get(group)) %>% summarize(value = median(value)) }
+    if (agg_metric == "Mean") { plotting_data <- plotting_data %>% group_by(yearpublished, get(group)) %>% summarize(value = mean(value, na.rm = TRUE)) }
+    if (agg_metric == "Median") { plotting_data <- plotting_data %>% group_by(yearpublished, get(group)) %>% summarize(value = median(value, na.rm = TRUE)) }
     names(plotting_data) <- c("yearpublished", group, "value")
     plot <- plot + geom_tile(data = plotting_data, aes(y = get(group), fill = value)) +
       coord_fixed() +

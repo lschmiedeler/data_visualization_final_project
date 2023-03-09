@@ -12,9 +12,9 @@ fluidPage(
     tabPanel(
       "Home",
       h4("Board Game Exploration"),
-      HTML("<em>All of the data used to create this application comes from the <b>BoardGameGeek Reviews</b> dataset on Kaggle.</em>"),
+      HTML("<em>All of the data used to create this application comes from the <a href = 'https://www.kaggle.com/datasets/jvanelteren/boardgamegeek-reviews'><b>BoardGameGeek Reviews</b></a> dataset on Kaggle.</em>"),
       br(), br(),
-      HTML("The <b>games_detailed_info.csv</b> file in this dataset contains information about 21,631 different board games.
+      HTML("The <a href = 'https://www.kaggle.com/datasets/jvanelteren/boardgamegeek-reviews?select=games_detailed_info.csv'><b>games_detailed_info.csv</b></a> file in this dataset contains information about 21,631 different board games.
            The following 15 features are a subset of the features in this file and are used in this application:
            <ul>
            <li> <b>Name:</b> the name of the game </li>
@@ -44,11 +44,11 @@ fluidPage(
             h5("Selected Game"), htmlOutput("selected_game_1"), htmlOutput("game_image")
           ),
           column(
-            4, h4("Popular Games"), numericInput("n_popular_all", strong("Select an Output Limit [1, 100]"), min = 1, max = 100, value = 25),
+            4, h4("Popular Games"), numericInput("n_popular_all", strong("Select an Output Limit [1, 250]"), min = 1, max = 250, value = 25),
             "", tableOutput("popular_games")
           ),
           column(
-            4, h4("Highest Rated Popular Games"), numericInput("n_highest_rated_popular_all", strong("Select an Output Limit [1, 100]"), min = 1, max = 100, value = 25),
+            4, h4("Highest Rated Popular Games"), numericInput("n_highest_rated_popular_all", strong("Select an Output Limit [1, 250]"), min = 1, max = 250, value = 25),
             "", tableOutput("highest_rated_popular_games")
           )
         )
@@ -135,7 +135,7 @@ fluidPage(
             radioButtons("group_3", strong("Select a Group"), choices = list("Categories" = "category", "Mechanics" = "mechanic", "Designers" = "designer")),
             radioButtons(
               "metric_1", strong("Select a Metric to Determine the Top Levels of the Group"),
-              choices = list("Number of Different Games", "Number Owned", "Average Rating")
+              choices = list("Number of Different Games", "Total Number Owned")
             ),
             sliderInput("n_1", strong("Select a Limit for the Number of Top Levels"), min = 1, max = 50, value = 10)
           ),
@@ -150,7 +150,7 @@ fluidPage(
             6, radioButtons("group_4", strong("Select a Group"), choices = list("Categories" = "category", "Mechanics" = "mechanic", "Designers" = "designer")),
             radioButtons(
               "metric_2", strong("Select a Metric to Determine the Top Levels of the Group"), 
-              choices = list("Number of Different Games", "Number Owned", "Average Rating"),
+              choices = list("Number of Different Games", "Total Number Owned"),
               width = "100%",
             ),
             sliderInput("n_2", strong("Select a Limit for the Number of Top Levels"), min = 1, max = 50, value = 10, width = "75%")
@@ -174,7 +174,7 @@ fluidPage(
             5, radioButtons("group_5", strong("Select a Group"), choices = list("Categories" = "category", "Mechanics" = "mechanic")),
             radioButtons(
               "metric_3", strong("Select a Metric to Determine the Top Levels of the Group"), 
-              choices = list("Number of Different Games", "Number Owned", "Average Rating"), width = "100%"
+              choices = list("Number of Different Games", "Total Number Owned"), width = "100%"
             ),
             sliderInput("n_3", strong("Select a Limit for the Number of Top Levels"), min = 1, max = 50, value = 10, width = "75%"),
             sliderInput("years_1", strong("Select a Year Range"), min = 1950, max = 2023, value = c(2000, 2020), width = "75%")
