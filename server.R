@@ -41,6 +41,12 @@ pick_expanded_column <- function(group) {
   if (group == "designer") { return(designers) }
 }
 
+pick_group_label <- function(group) {
+  if (group == "category") { return("Categories") }
+  if (group == "mechanic") { return("Mechanics") }
+  if (group == "designer") { return("Designers") }
+}
+
 filter_feature <- function(df, feature, range) {
   if (length(range) == 0) { df }
   else if (is.na(range[[1]])) { filter(df, get(feature) <= range[2]) }
@@ -63,7 +69,6 @@ function(input, output, session) {
   highest_rated_popular_games <- reactive({
     if (is.na(input$n_highest_rated_popular_all)) { data.frame() }
     else {
-      
       details %>% filter(owned >= quantile(details$owned, 1 - min(1, 10 * input$n_highest_rated_popular_all / nrow(details)), na.rm = TRUE)) %>% 
         select(name, average, owned) %>% top_n(input$n_highest_rated_popular_all, average) %>% arrange(-average) %>% 
         rename("Name" = name, "Average Rating" = average, "Number Owned" = owned)
@@ -71,17 +76,18 @@ function(input, output, session) {
   })
   output$highest_rated_popular_games <- renderTable(highest_rated_popular_games())
   
-  selected_game_link <- reactive({ renderUI(HTML(paste0('<a href="https://boardgamegeek.com/boardgame/', input$game_id, '">', game_information()$name , '</a>'))) })
-  output$selected_game_1 <- renderUI(selected_game_link())
-  output$selected_game_2 <- renderUI(selected_game_link())
+  selected_game_text <- reactive({ game_information()$name })
+  selected_game_link <- reactive({ paste0('<a href="https://boardgamegeek.com/boardgame/', input$game_id, '">', game_information()$name , '</a>') })
+  output$selected_game_1 <- renderUI(HTML(paste("<b>Selected Game:</b>", selected_game_text())))
+  output$selected_game_2 <- renderUI(HTML(selected_game_text()))
+  output$selected_game_3 <- renderUI(HTML(paste("<b>Selected Game:</b> <font color = 'blue'>", selected_game_text(), "</font>")))
+  output$selected_game_4 <- renderUI(HTML(paste("<b>Selected Game:</b> <font color = 'blue'>", selected_game_text(), "</font>")))
+  output$selected_game_link <- renderUI(HTML(selected_game_link()))
   output$selected_game_description <- renderUI(HTML(game_information()$description))
   
-  selected_game_text <- reactive({ HTML(paste("<b>Selected Game:</b>", game_information()$name)) })
-  output$selected_game_3 <- renderUI(selected_game_text())
-  output$selected_game_4 <- renderUI(selected_game_text())
-  
   image_src <- reactive({ game_information()$image })
-  output$game_image <- renderText({paste0("<img src=\"", image_src(), "\" style=\"width:80%\">")})
+  output$game_image_large <- renderText({paste0("<img src=\"", image_src(), "\" style=\"width:80%\">")})
+  output$game_image_small <- renderText({paste0("<img src=\"", image_src(), "\" style=\"width:15%\">")})
   
   game_details_float <- reactive({
     if (nchar(input$game_id) > 0) {
@@ -134,6 +140,7 @@ function(input, output, session) {
   
   updateSelectizeInput(session, "group_2", choices = list("Categories" = "category", "Mechanics" = "mechanic", "Designers" = "designer"), server = TRUE)
   group <- reactive({ input$group_2 })
+  output$group_label_1 <- renderUI({ HTML(paste0("<b>Select a ", str_to_title(group()), "</b>")) })
   levels <- reactive({
     if (group() == "category") { return(sort(unique(categories$category))) }
     if (group() == "mechanic") { return(sort(unique(mechanics$mechanic))) }
@@ -188,10 +195,44 @@ function(input, output, session) {
   })
   output$highest_rated_popular_games_in_level <- renderTable(highest_rated_popular_games_in_level())
 
+  updateSelectizeInput(session, "categories", choices = sort(unique(categories$category)), server = TRUE)
+  updateSelectizeInput(session, "mechanics", choices = sort(unique(mechanics$mechanic)), server = TRUE)
+  games_in_groups <- reactive({
+    if (length(input$categories) == 0 & length(input$mechanics) == 0) { return (details) }
+    else if (length(input$mechanics) > 0 & length(input$categories) == 0) { 
+      ids <- Reduce(intersect, lapply(input$mechanics, function(x) { (filter(mechanics, mechanic == x))$id }))
+    }
+    else if (length(input$categories) > 0 & length(input$mechanics) == 0) { 
+      ids <- Reduce(intersect, lapply(input$categories, function(x) { (filter(categories, category == x))$id }))
+    }
+    else {
+      ids <- Reduce(
+        intersect, list(Reduce(intersect, lapply(input$categories, function(x) { (filter(categories, category == x))$id })), 
+                        Reduce(intersect, lapply(input$mechanics, function(x) { (filter(mechanics, mechanic == x))$id })))
+      )
+    }
+    details %>% filter(id %in% ids)
+  })
+  top_games_in_groups <- reactive({
+    if (is.na(input$n_games_1)) { return(data.frame()) }
+    else { 
+      games_in_groups() %>% top_n(input$n_games_1, get(find_feature(input$sort_feature_1))) %>% 
+        arrange(desc(get(find_feature(input$sort_feature_1)))) %>%
+        select(name, average, averageweight, owned,  yearpublished) %>% 
+        rename("Name" = name, "Average Rating" = average, "Average Complexity" = averageweight, "Number Owned" = owned, "Year Published" = yearpublished)
+    }
+  })
+  output$total_number_of_games_in_groups <- renderUI(HTML(paste("<b>Total Number of Games:</b>", nrow(games_in_groups()))))
+  output$top_games_in_groups <- renderTable({ top_games_in_groups() })
+  
+  output$group_label_2 <- renderUI({ HTML(paste0("<b>Select a Metric to Determine the Top ", pick_group_label(input$group_3), "</b>"))})
+  output$group_label_3 <- renderUI({ HTML(paste0("<b>Select a Limit for the Number of Top ", pick_group_label(input$group_3), "</b>"))})
   output$top_bar_chart <- renderPlot(
     plot_top_bar_chart(pick_expanded_details(input$group_3), input$group_3, input$metric_1, input$n_1)
   )
 
+  output$group_label_4 <- renderUI({ HTML(paste0("<b>Select a Metric to Determine the Top ", pick_group_label(input$group_4), "</b>"))})
+  output$group_label_5 <- renderUI({ HTML(paste0("<b>Select a Limit for the Number of Top ", pick_group_label(input$group_4), "</b>"))})
   output$top_levels_comparison <- renderPlot(
     plot_group_comparison(
       pick_expanded_details(input$group_4), pick_expanded_column(input$group_4), NA, input$group_4, NA, input$metric_2, input$n_2, 
@@ -199,6 +240,8 @@ function(input, output, session) {
     )
   )
   
+  output$group_label_6 <- renderUI({ HTML(paste0("<b>Select a Metric to Determine the Top ", pick_group_label(input$group_5), "</b>"))})
+  output$group_label_7 <- renderUI({ HTML(paste0("<b>Select a Limit for the Number of Top ", pick_group_label(input$group_5), "</b>"))})
   output$groups_over_time <- renderPlot(
     plot_groups_over_time(
       pick_expanded_details(input$group_5), input$group_5, input$metric_3, input$n_3, find_feature(input$feature_5), as.logical(input$remove_extreme_values_5), 
@@ -214,15 +257,15 @@ function(input, output, session) {
     dfs <- lapply(1:length(features), function(x) { filter_feature(df, features[x], ranges[[x]]) }) %>% reduce(inner_join)
   })
   top_filtered_games <- reactive({
-    if (is.na(input$n_games)) { return(data.frame()) }
+    if (is.na(input$n_games_2)) { return(data.frame()) }
     df <- filtered_games()
     if (input$reverse_sort) { 
-      df <- df %>% top_n(input$n_games, -get(find_feature(input$sort_feature))) %>%
-        arrange(get(find_feature(input$sort_feature)))
+      df <- df %>% top_n(input$n_games_2, -get(find_feature(input$sort_feature_2))) %>%
+        arrange(get(find_feature(input$sort_feature_2)))
     } 
     else {
-      df <- df %>% top_n(input$n_games, get(find_feature(input$sort_feature))) %>%
-        arrange(desc(get(find_feature(input$sort_feature))))
+      df <- df %>% top_n(input$n_games_2, get(find_feature(input$sort_feature_2))) %>%
+        arrange(desc(get(find_feature(input$sort_feature_2))))
     }
     df <- df %>% select(name, average, averageweight, owned, yearpublished, minplayers, maxplayers, minplaytime, maxplaytime, minage)
     names(df) <- c("Name", labels)

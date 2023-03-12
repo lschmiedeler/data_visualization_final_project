@@ -36,62 +36,54 @@ fluidPage(
     ),
     navbarMenu(
       "Analyze One Game",
-      tabPanel(
-        "Select a Game",
+      tabPanel("Step 1: Select a Game",
         fluidRow(
           column(
-            4, selectizeInput("game_id", h4("Select a Game"), choices = NULL),
-            h5("Selected Game"), htmlOutput("selected_game_1"), htmlOutput("game_image")
+            4, selectizeInput("game_id", HTML("<h4>Select a Game</h4> To search, remove the selected game by hitting backspace and then type the name of the game you want to analyze."), choices = NULL),
+            htmlOutput("selected_game_1"), htmlOutput("game_image_large")
           ),
           column(
-            4, h4("Popular Games"), numericInput("n_popular_all", strong("Select an Output Limit [1, 250]"), min = 1, max = 250, value = 25),
+            4, h4("Popular Games"), numericInput("n_popular_all", strong("Select an Output Limit [1, 500]"), min = 1, max = 500, value = 25),
             "", tableOutput("popular_games")
           ),
           column(
-            4, h4("Highest Rated Popular Games"), numericInput("n_highest_rated_popular_all", strong("Select an Output Limit [1, 250]"), min = 1, max = 250, value = 25),
+            4, h4("Highest Rated Popular Games"), numericInput("n_highest_rated_popular_all", strong("Select an Output Limit [1, 500]"), min = 1, max = 500, value = 25),
             "", tableOutput("highest_rated_popular_games")
           )
         )
       ),
-      tabPanel(
-        "View Game Information",
-        h4("View Game Information"),
-        hr(), h5("Selected Game"), htmlOutput("selected_game_2"),
+      tabPanel("Step 2: View Game Information", h4("View Game Information"),
+        hr(), h5("Selected Game"), htmlOutput("selected_game_2"), htmlOutput("game_image_small"),
         hr(), h5("Description"), htmlOutput("selected_game_description"),
+        hr(), h5("Link to BoardGameGeeks Page"), htmlOutput("selected_game_link"),
         hr(), fluidRow(
-          column(
-            6, h5("Feature Values"), tableOutput("game_details_float"), tableOutput("game_details_int")
-          ),
+          column(6, h5("Feature Values"), tableOutput("game_details_float"), tableOutput("game_details_int")),
           column(
             6, h5("Categories, Mechanics, and Designers"), tableOutput("game_categories"),
             tableOutput("game_mechanics"), tableOutput("game_designers")
           )
         )
       ),
-      tabPanel(
-        "Compare Game to All Games",
-        h4("Compare Game to All Games"),
+      tabPanel("Step 3: Compare Game to All Games", h4("Compare Game to All Games"),
         sidebarLayout(
           sidebarPanel(
             htmlOutput("selected_game_3"), 
-            em("The feature value associated with the selected game is represented by a black dashed line."),
-            hr(), selectizeInput("feature_1", strong("Select Features"), choices = NULL, multiple = TRUE),
+            em("The feature value associated with the selected game is represented by a dashed line."),
+            hr(), selectizeInput("feature_1", HTML("<b>Select Features</b><br>To add a feature, select it from the list.  To remove a feature, select it and hit backspace."), choices = NULL, multiple = TRUE),
             radioButtons("remove_extreme_values_1", strong("Remove Feature Extreme Values?"), choices = list("No" = FALSE, "Yes" = TRUE)),
             radioButtons("plot_type_1", strong("Select a Plot Type"), choices = list("Boxplot", "Histogram", "Density Plot")),
           ),
           mainPanel(plotOutput("all_game_comparison", height = 700))
         )
       ),
-      tabPanel(
-        "Compare Game to Similar Games",
-        h4("Compare Game to Similar Games"),
+      tabPanel("Step 4: Compare Game to Similar Games", h4("Compare Game to Similar Games"),
         sidebarLayout(
           sidebarPanel(
             htmlOutput("selected_game_4"), 
-            em("The feature value associated with the selected game is represented by a black dashed line."),
+            em("The feature value associated with the selected game is represented by a dashed line."),
             hr(),
             radioButtons("group_1", strong("Filter by"), choices = list("Category" = "category", "Mechanic" = "mechanic")),
-            selectizeInput("feature_2", strong("Select Features"), choices = NULL, multiple = TRUE),
+            selectizeInput("feature_2", HTML("<b>Select Features</b><br>To add a feature, select it from the list.  To remove a feature, select it and hit backspace."), choices = NULL, multiple = TRUE),
             radioButtons("remove_extreme_values_2", strong("Remove Feature Extreme Values?"), choices = list("No" = FALSE, "Yes" = TRUE)),
             radioButtons("plot_type_2", strong("Select a Plot Type"), choices = list("Boxplot", "Violin Plot", "Density Plot", "Ridgeline Plot")),
           ),
@@ -100,44 +92,15 @@ fluidPage(
       )
     ),
     navbarMenu(
-      "Anaylze Groups of Games",
-      tabPanel(
-        "View and Plot Category, Mechanic, and Designer Information",
-        h4("View and Plot Category, Mechanic, and Designer Information"),
-        hr(), selectizeInput("group_2", strong("Select a Group"), choices = 3),
-        selectizeInput("level_1", strong("Select a Level"), choices = 100),
-        htmlOutput("number_of_games"),
-        br(), hr(), h5("Plot Feature Values"),
-        sidebarLayout(
-          sidebarPanel(
-            selectizeInput("feature_3", strong("Select Features"), choices = NULL, multiple = TRUE),
-            radioButtons("remove_extreme_values_3", strong("Remove Feature Extreme Values?"), choices = list("No" = FALSE, "Yes" = TRUE)),
-            radioButtons("plot_type_3", strong("Select a Plot Type"), choices = list("Boxplot", "Violin Plot", "Density Plot", "Ridgeline Plot"))
-          ),
-          mainPanel(
-            plotOutput("level_comparison", height = 700)
-          )
-        ),
-        br(), br(), hr(), fluidRow(
-          column(4, h5("Popular Games"), numericInput("n_popular", strong("Select an Output Limit [1, 100]"), min = 1, max = 100, value = 25),
-                 "", tableOutput("popular_games_in_level")),
-          column(4, h5("Highest Rated Games"), numericInput("n_highest_rated", strong("Select an Output Limit [1, 100]"), min = 1, max = 100, value = 25),
-                 "", tableOutput("highest_rated_games_in_level")),
-          column(4, h5("Highest Rated Popular Games"), numericInput("n_highest_rated_popular", strong("Select an Output Limit [1, 100]"), min = 1, max = 100, value = 25),
-                 "", tableOutput("highest_rated_popular_games_in_level")),
-        )
-      ),
+      "Analyze Groups of Games",
       tabPanel(
         "View Top Categories, Mechanics, and Designers",
         h4("View Top Categories, Mechanics, and Designers"),
         sidebarLayout(
           sidebarPanel(
             radioButtons("group_3", strong("Select a Group"), choices = list("Categories" = "category", "Mechanics" = "mechanic", "Designers" = "designer")),
-            radioButtons(
-              "metric_1", strong("Select a Metric to Determine the Top Levels of the Group"),
-              choices = list("Number of Different Games", "Total Number Owned")
-            ),
-            sliderInput("n_1", strong("Select a Limit for the Number of Top Levels"), min = 1, max = 50, value = 10)
+            radioButtons("metric_1", htmlOutput("group_label_2"), choices = list("Number of Different Games", "Total Number Owned")),
+            sliderInput("n_1", htmlOutput("group_label_3"), min = 1, max = 50, value = 10)
           ),
           mainPanel(plotOutput("top_bar_chart", height = 700))
         )
@@ -148,12 +111,8 @@ fluidPage(
         hr(), fluidRow(
           column(
             6, radioButtons("group_4", strong("Select a Group"), choices = list("Categories" = "category", "Mechanics" = "mechanic", "Designers" = "designer")),
-            radioButtons(
-              "metric_2", strong("Select a Metric to Determine the Top Levels of the Group"), 
-              choices = list("Number of Different Games", "Total Number Owned"),
-              width = "100%",
-            ),
-            sliderInput("n_2", strong("Select a Limit for the Number of Top Levels"), min = 1, max = 50, value = 10, width = "75%")
+            radioButtons("metric_2", htmlOutput("group_label_4"), choices = list("Number of Different Games", "Total Number Owned"), width = "100%"),
+            sliderInput("n_2", htmlOutput("group_label_5"), min = 1, max = 50, value = 10, width = "75%")
           ),
           column(
             3, radioButtons("feature_4", strong("Select a Feature"), choices = features),
@@ -167,16 +126,53 @@ fluidPage(
         hr(), plotOutput("top_levels_comparison", height = 800)
       ),
       tabPanel(
+        "View Category, Mechanic, and Designer Information",
+        h4("View Category, Mechanic, and Designer Information"),
+        hr(), selectizeInput("group_2", strong("Select a Group"), choices = 3),
+        selectizeInput("level_1", htmlOutput("group_label_1"), choices = 100),
+        htmlOutput("number_of_games"),
+        br(), hr(), h5("Plot Feature Values"),
+        sidebarLayout(
+          sidebarPanel(
+            selectizeInput("feature_3", HTML("<b>Select Features</b><br>To add a feature, select it from the list.  To remove a feature, select it and hit backspace."), choices = NULL, multiple = TRUE),
+            radioButtons("remove_extreme_values_3", strong("Remove Feature Extreme Values?"), choices = list("No" = FALSE, "Yes" = TRUE)),
+            radioButtons("plot_type_3", strong("Select a Plot Type"), choices = list("Boxplot", "Violin Plot", "Density Plot", "Ridgeline Plot"))
+          ),
+          mainPanel(
+            plotOutput("level_comparison", height = 700)
+          )
+        ),
+        br(), br(), hr(), fluidRow(
+          column(4, h5("Popular Games"), numericInput("n_popular", strong("Select an Output Limit [1, 500]"), min = 1, max = 500, value = 25),
+                 "", tableOutput("popular_games_in_level")),
+          column(4, h5("Highest Rated Games"), numericInput("n_highest_rated", strong("Select an Output Limit [1, 500]"), min = 1, max = 500, value = 25),
+                 "", tableOutput("highest_rated_games_in_level")),
+          column(4, h5("Highest Rated Popular Games"), numericInput("n_highest_rated_popular", strong("Select an Output Limit [1, 500]"), min = 1, max = 500, value = 25),
+                 "", tableOutput("highest_rated_popular_games_in_level")),
+        )
+      ),
+      tabPanel(
+        "Filter Games by Categories and Mechanics",
+        h4("Filter Games by Categories and Mechanics"),
+        sidebarLayout(
+          sidebarPanel(
+            selectizeInput("categories", HTML("<b>Select Categories</b><br>To add a category, select it from the list.  To remove a category, select it and hit backspace."), choices = NULL, multiple = TRUE),
+            selectizeInput("mechanics", HTML("<b>Select Mechanics</b><br>To add a mechanic, select it from the list.  To remove a mechanic, select it and hit backspace."), choices = NULL, multiple = TRUE),
+            numericInput("n_games_1", strong("Select an Output Limit [1, 1000]"), min = 1, max = 1000, value = 100),
+            radioButtons("sort_feature_1", strong("Sort by"), choices = c("Average Rating", "Average Complexity", "Number Owned", "Year Published")),
+            htmlOutput("total_number_of_games_in_groups")
+          ),
+          mainPanel(tableOutput("top_games_in_groups"))
+        )
+      ),
+      tabPanel(
         "Plot Top Categories and Mechanics Over Time",
         h4("Plot Top Categories and Mechanics Over Time"),
         hr(), fluidRow(
           column(
             5, radioButtons("group_5", strong("Select a Group"), choices = list("Categories" = "category", "Mechanics" = "mechanic")),
-            radioButtons(
-              "metric_3", strong("Select a Metric to Determine the Top Levels of the Group"), 
-              choices = list("Number of Different Games", "Total Number Owned"), width = "100%"
-            ),
-            sliderInput("n_3", strong("Select a Limit for the Number of Top Levels"), min = 1, max = 50, value = 10, width = "75%"),
+            radioButtons("metric_3", htmlOutput("group_label_6"), choices = list("Number of Different Games", "Total Number Owned"), width = "100%"),
+            sliderInput("n_3", htmlOutput("group_label_7"), min = 1, max = 50, value = 10, width = "75%"),
             sliderInput("years_1", strong("Select a Year Range"), min = 1950, max = 2023, value = c(2000, 2020), width = "75%")
           ),
           column(
@@ -185,20 +181,20 @@ fluidPage(
             radioButtons("plot_type_5", strong("Select a Plot Type"), choices = list("Scatterplot", "Heat Map")),
           ),
           column(
-            4, radioButtons("add_line_1", strong("Add (Black) Lines to Scatterplots?"), choices = list("No" = FALSE, "Yes" = TRUE)),
-            radioButtons("add_curve_1", strong("Add (Blue) Curves to Scatterplots?"), choices = list("No" = FALSE, "Yes" = TRUE)),
+            4, radioButtons("add_line_1", strong("Add (Blue) Lines to Scatterplots?"), choices = list("No" = FALSE, "Yes" = TRUE)),
+            radioButtons("add_curve_1", strong("Add (Purple) Curves to Scatterplots?"), choices = list("No" = FALSE, "Yes" = TRUE)),
             radioButtons("agg_metric", strong("Select an Aggregation Metric for the Heatmap"), choices = c("Mean", "Median")),
             radioButtons("sort_2", strong("Sort by Median Feature Value?"), choices = list("No" = FALSE, "Yes" = TRUE))
           )
         ),
-        hr(), plotOutput("groups_over_time", height = 800)
+        hr(), plotOutput("groups_over_time", height = 900)
       )
     ),
     navbarMenu(
       "Analyze All Games",
       tabPanel(
-        "Filter and View Games",
-        h4("Filter and View Games"),
+        "Filter Games by Feature Values",
+        h4("Filter Games by Feature Values"),
         hr(), fluidRow(
           column(
             4, numericRangeInput("rating_range", strong("Average Rating Range [1, 10]"), min = 1, max = 10, value = c(1, 10), width = "90%"),
@@ -214,8 +210,8 @@ fluidPage(
           ),
           column(
             4, numericRangeInput("minage_range", strong("Minimum Age Range [1, 25]"), min = 1, max = 25, value = c(1, 25), width = "90%"),
-            numericInput("n_games", strong("Select an Output Limit (1-500)"), min = 1, max = 500, value = 25),
-            selectInput("sort_feature", strong("Sort by"), choices = features),
+            numericInput("n_games_2", strong("Select an Output Limit [1, 1000]"), min = 1, max = 1000, value = 100),
+            selectInput("sort_feature_2", strong("Sort by"), choices = features),
             radioButtons("reverse_sort", strong("Reverse Sort?"), choices = list("No" = FALSE, "Yes" = TRUE)),
           )
         ),
@@ -235,8 +231,8 @@ fluidPage(
           ),
           column(
             4, radioButtons("plot_type_6", strong("Select a Plot Type"), choices = list("Scatterplot", "Ridgeline Plot")),
-            radioButtons("add_line_2", strong("Add (Black) Line to Scatterplot?"), choices = list("No" = FALSE, "Yes" = TRUE)),
-            radioButtons("add_curve_2", strong("Add (Blue) Curve to Scatterplot?"), choices = list("No" = FALSE, "Yes" = TRUE))
+            radioButtons("add_line_2", strong("Add (Blue) Line to Scatterplot?"), choices = list("No" = FALSE, "Yes" = TRUE)),
+            radioButtons("add_curve_2", strong("Add (Purple) Curve to Scatterplot?"), choices = list("No" = FALSE, "Yes" = TRUE))
           )
         ),
         hr(), plotOutput("games_over_time", height = 800)

@@ -109,7 +109,7 @@ plot_single_comparison <- function(details, game_id, feature, remove_extreme_val
   }
   if (length(feature) == 1) { plot <- plot + labs(x = x_label) }
   # add the dashed line that represents the feature value associated with the selected game
-  plot <- plot + geom_vline(data = game_values, aes(xintercept = value), color = "black", linewidth = 1.2, linetype = "longdash") + 
+  plot <- plot + geom_vline(data = game_values, aes(xintercept = value), color = "blue", linewidth = 1.2, linetype = "longdash") + 
     theme(axis.text = element_text(size = 12), axis.title = element_text(size = 14)) +
     scale_x_continuous(labels = scales::comma, breaks = scales::pretty_breaks())
   plot
@@ -138,7 +138,8 @@ plot_group_comparison <- function(expanded_details, expanded_column, game_id, gr
   }
   # filter the data so that the only levels of the group remaining are the top n levels
   if (is.na(game_id) & is.na(level)) { plotting_data <- filter_top_n_levels(expanded_details, group, metric, n, feature, remove_extreme_values, FALSE, sort) }
-
+  if (nrow(plotting_data) == 0) { return (ggplot()) }
+  
   # create one of the four possible plots: boxplot, violin plot, density plot, or ridgeline plot
   plot <- ggplot(plotting_data, aes(x = value, color = get(group), fill = get(group))) + theme_bw()
   # create a boxplot
@@ -166,7 +167,7 @@ plot_group_comparison <- function(expanded_details, expanded_column, game_id, gr
   if (plot_type != "Density Plot") { plot <- plot + scale_y_discrete(limits = rev) }
   
   # add the dashed line that represents the feature value associated with the selected game
-  if (is.na(n) & is.na(level)) { plot <- plot + geom_vline(data = game_values, aes(xintercept = value), color = "black", linewidth = 1.2, linetype = "longdash") }
+  if (is.na(n) & is.na(level)) { plot <- plot + geom_vline(data = game_values, aes(xintercept = value), color = "blue", linewidth = 1.2, linetype = "longdash") }
   
   plot <- plot + labs(x = x_label, color = str_to_title(group), fill = str_to_title(group)) +
     theme(axis.title = element_text(size = 14), axis.text = element_text(size = 12)) +
@@ -207,16 +208,18 @@ plot_groups_over_time <- function(expanded_details, group, metric, n, feature, r
   plot <- ggplot(plotting_data, aes(x = yearpublished)) + theme_bw()
   # create a scatterplot
   if (plot_type == "Scatterplot") {
-    plot <- plot + geom_jitter(aes(y = value, color = get(group)), alpha = 0.5, height = 0.5, width = 0.5) +
-      facet_wrap(~get(group)) +
-      theme(axis.title = element_text(size = 14), axis.text = element_text(size = 12), strip.text = element_text(size = 14), legend.position = "none") +
+    plot <- plot + geom_jitter(aes(y = value, color = get(group)), alpha = 0.2, height = 0.5, width = 0.5) +
+      facet_wrap(~get(group), scales = "free_x") +
+      theme(axis.title = element_text(size = 14), axis.text = element_text(size = 12), strip.text = element_text(size = 14), 
+            legend.position = "none", panel.spacing = unit(1.1, "lines")) +
       labs(x = "Year Published", y = label) + 
       scale_color_manual(values = wesanderson::wes_palette("Darjeeling1", n = n, type = "continuous")) +
-      scale_y_continuous(labels = scales::comma, breaks = scales::pretty_breaks())
+      scale_y_continuous(labels = scales::comma, breaks = scales::pretty_breaks()) +
+      scale_x_continuous(limits = c(years[1] - 1, years[2] + 1))
     # add a linear regression line
-    if (add_line) { plot <- plot + geom_smooth(aes(x = yearpublished, y = value), method = "lm", se = FALSE, color = "black") }
+    if (add_line) { plot <- plot + geom_smooth(aes(x = yearpublished, y = value), method = "lm", se = FALSE, color = "blue") }
     # add a smooth curve
-    if (add_curve) { plot <- plot + geom_smooth(aes(x = yearpublished, y = value), method = "gam", se = FALSE, color = "blue") }
+    if (add_curve) { plot <- plot + geom_smooth(aes(x = yearpublished, y = value), method = "gam", se = FALSE, color = "purple") }
     if (n >= 30) { plot <- plot + theme(axis.text = element_text(size = 10)) }
   }
   # create a heat map
@@ -251,9 +254,9 @@ plot_games_over_time <- function(details, feature, remove_extreme_values, years,
       labs(x = "Year Published", y = label) + 
       scale_y_continuous(labels = scales::comma, breaks = scales::pretty_breaks())
     # add a smooth curve
-    if (add_line) { plot <- plot + geom_smooth(method = "lm", se = FALSE, color = "black", linewidth = 1.5) }
+    if (add_line) { plot <- plot + geom_smooth(method = "lm", se = FALSE, color = "blue", linewidth = 1.5) }
     # add a smooth curve
-    if (add_curve) { plot <- plot + geom_smooth(method = "gam", se = FALSE, color = "blue", linewidth = 1.5) }
+    if (add_curve) { plot <- plot + geom_smooth(method = "gam", se = FALSE, color = "purple", linewidth = 1.5) }
   }
   # create a ridgeline plot
   if (plot_type == "Ridgeline Plot") {
