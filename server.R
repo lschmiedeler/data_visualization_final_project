@@ -280,4 +280,22 @@ function(input, output, session) {
       as.logical(input$add_line_2), as.logical(input$add_curve_2), input$year_bin_size_1, input$feature_6
     )
   )
+  
+  wishlist_ids <- reactiveFileReader(1000, session, "wishlist.txt", read.csv)
+  wishlist <- reactive({ filter(details, id %in% wishlist_ids()[,1]) })
+  wishlist_add <- reactive({ games_list[!(games_list %in% wishlist()$id)] })
+  wishlist_remove <- reactive({ games_list[games_list %in% wishlist()$id] })
+  observe({ updateSelectizeInput(session, "add", choices = wishlist_add(), server = TRUE) })
+  observe({ updateSelectizeInput(session, "remove", choices = wishlist_remove(), server = TRUE) })
+  observeEvent(input$add_action, { write(input$add, file = "wishlist.txt", append = TRUE) })
+  observeEvent(input$remove_action, { 
+    ids <- read.csv("wishlist.txt")[,1]
+    keep_ids <- ids[ids != input$remove]
+    write(paste0("wishlist\n", paste(keep_ids, collapse = "\n")), file = "wishlist.txt", append = FALSE) 
+  })
+  output$wishlist <- renderTable(
+    wishlist() %>% select(name, average, averageweight, owned, yearpublished) %>%
+      arrange(name) %>%
+      rename("Name" = name, "Average Rating" = average, "Average Complexity" = averageweight, "Number Owned" = owned, "Year Published" = yearpublished)
+  )
 }

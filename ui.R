@@ -237,6 +237,21 @@ fluidPage(
         ),
         hr(), plotOutput("games_over_time", height = 800)
       )
+    ),
+    tabPanel(
+      "Wishlist", h4("Wishlist"),
+      fluidRow(
+        column(
+          4, selectizeInput("add", strong("Select a Game to Add"), choices = NULL),
+          actionButton("add_action", "Add to Wishlist"), br(), br(),
+          selectizeInput("remove", strong("Select a Game to Remove"), choices = NULL),
+          actionButton("remove_action", "Remove from Wishlist"),
+        ),
+        column(
+          8, tableOutput("wishlist")
+        )
+      )
+
     )
   )
 )
